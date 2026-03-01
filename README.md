@@ -1,12 +1,12 @@
-# BossRoom
+# BossBot
 
-**BossRoom** is a virtual office where AI agents are your coworkers, available in both immersive 3D (inspired by **Minecraft**) and streamlined 2D (like **Claude Imagine**!). Navigate a physics-enabled workspace or use a desktop-style interface, speaking by voice or text while agents execute real tasks: sending emails in Gmail, scheduling meetings on Google Calendar, filing tickets in Linear, and researching the web using Browser Use! 
+**BossBot** is a virtual office where AI agents are your coworkers, available in both immersive 3D (inspired by **Minecraft**) and streamlined 2D (like **Claude Imagine**!). Navigate a physics-enabled workspace or use a desktop-style interface, speaking by voice or text while agents execute real tasks: sending emails in Gmail, scheduling meetings on Google Calendar, filing tickets in Linear, and researching the web using Browser Use! 
 
 A Receptionist agent dynamically assembles teams of 3–12 specialists on demand. Built with Next.js, React Three Fiber, and Tailwind on the frontend; Node.js, WebSockets, and the Vercel AI SDK on the backend; deployed on GCP Cloud Run and Cloudflare Pages. 
 
 Built in 20 hours at **YC’s Browser Use Web Agents Hackathon**!
 
-<img width="1536" height="1024" alt="BossRoom" src="https://github.com/user-attachments/assets/0b7f8e0b-9dea-4c15-b636-1c7d94516e6d" />
+<img width="1536" height="1024" alt="BossBot" src="https://github.com/user-attachments/assets/0b7f8e0b-9dea-4c15-b636-1c7d94516e6d" />
 
 
 ---
@@ -23,7 +23,7 @@ The result is something we honestly didn't think was possible in 36 hours: a ful
 
 ## What it does
 
-BossRoom is a **multiplayer 3D virtual office** where AI agents are your coworkers. You navigate a third-person character through a physics-enabled world, walk up to agents at their desks, and delegate real tasks — by typing or by holding a push-to-talk key and speaking naturally.
+BossBot is a **multiplayer 3D virtual office** where AI agents are your coworkers. You navigate a third-person character through a physics-enabled world, walk up to agents at their desks, and delegate real tasks — by typing or by holding a push-to-talk key and speaking naturally.
 
 **These agents don't just chat. They execute.** They send actual emails through Gmail, create real tickets in Linear, book real meetings on Google Calendar, search real products across retailers, and process real payments through Visa.
 
@@ -125,7 +125,7 @@ And honestly — **scoping a 36-hour vision** down to what we could actually shi
 
 We also learned a ton about WebRTC peer-to-peer audio, HRTF spatial panning, chunk-based terrain generation, Vercel AI SDK multi-step tool calling, Composio OAuth scoping, Visa MCP integration, and how to wire up multi-model LLM systems with live tool integrations under extreme time pressure.
 
-## What's next for BossRoom
+## What's next for BossBot
 
 **Smarter model routing.** All agents currently use Gemini 3 Flash. We want automatic model selection — route research tasks to Claude, fast lookups to GPT-4o, creative work to the best model for the job. The Vercel AI Gateway already supports this; we just need the routing logic.
 
@@ -137,7 +137,7 @@ We also learned a ton about WebRTC peer-to-peer audio, HRTF spatial panning, chu
 
 **More integrations.** With MCP support built in and Composio already providing Gmail, Calendar, Linear, Stripe, and SerpAPI — we want to connect to every tool ecosystem out there. Slack, Notion, GitHub, Figma, Jira.
 
-Long term, we believe every company will have fleets of AI agents. Current interfaces are chat boxes and dashboards. **BossRoom is the operating system for working with them** — and it's fun.
+Long term, we believe every company will have fleets of AI agents. Current interfaces are chat boxes and dashboards. **BossBot is the operating system for working with them** — and it's fun.
 
 ---
 
@@ -196,13 +196,13 @@ Agents use **Vercel AI SDK** (`streamText` with multi-step tool calling) routed 
 ## Project Structure
 
 ```
-BossRoom/
+BossBot/
 ├── apps/
 │   ├── game-frontend/     # Next.js 16 + Tailwind v4 + Three.js (R3F) + shadcn/ui
 │   └── game-server/       # Node.js + WebSocket + AI SDK + Composio + Drizzle ORM
 ├── libs/
-│   ├── shared-types/      # @bossroom/shared-types (WS protocol + agent types)
-│   └── shared-utils/      # @bossroom/shared-utils (agent defs, constants, logger)
+│   ├── shared-types/      # @BossBot/shared-types (WS protocol + agent types)
+│   └── shared-utils/      # @BossBot/shared-utils (agent defs, constants, logger)
 ├── terraform/             # GCP Cloud Run, Cloud SQL, Firebase Auth, Cloudflare Pages
 └── scripts/
     ├── health-check.mjs   # Infrastructure health check

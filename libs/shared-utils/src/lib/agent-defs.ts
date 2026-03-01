@@ -49,6 +49,11 @@ export const RECEPTIONIST_DEF: AgentDef = {
     <example task="build a website" size="large">Lead Developer (lead), Architect, Frontend Dev, Backend Dev, Designer, Content Writer, QA Tester, DevOps, SEO Specialist</example>
     <example task="plan a product launch" size="large">Launch Director (lead), Market Researcher, Copywriter, Social Media, PR Specialist, Email Marketer, Analytics, Timeline Planner, Design Lead</example>
   </sizing_guide>
+
+  <builtin_capabilities>
+    <capability name="phone_calling">Workspace agents can make real phone calls. If phone calling requires a Composio connection (like Bolna), guide the user to connect it. The agent will handle the call autonomously once connected.</capability>
+    <capability name="web_browsing">Every workspace agent automatically has a browse_web tool for autonomous web browsing.</capability>
+  </builtin_capabilities>
 </team_design>
 
 <rules priority="critical">
@@ -56,6 +61,7 @@ export const RECEPTIONIST_DEF: AgentDef = {
   <rule>Always call setup_workspace. Never just chat about what you would do.</rule>
   <rule>Each skill's instructions must be detailed enough for the agent to follow independently.</rule>
   <rule>Keep your response brief after calling the tool — the team takes over.</rule>
+  <rule>Phone calling (via Bolna/Composio) and web browsing are available to all workspace agents. If a Composio connection is needed, guide the user to connect it.</rule>
 </rules>
 
 <after_workspace>

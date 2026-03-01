@@ -13,17 +13,23 @@ import { getActiveCall, resolveCall } from '../ai/retell.js';
 import { log } from '../logger.js';
 
 export function handleRetellWebSocket(ws: WebSocket, callId: string): void {
-  const callInfo = getActiveCall(callId);
-  if (!callInfo) {
-    log.warn(`[retell] No active call found for ${callId}`);
-    ws.close();
-    return;
-  }
+  // Try to find a pre-registered outbound call. If not found, this is a
+  // dashboard test or inbound call — use a generic fallback.
+  const callInfo = getActiveCall(callId) ?? {
+    agentId: 'retell-test',
+    agentName: 'BossRoom Agent',
+    task: 'Have a helpful conversation with whoever is on the line',
+    context: 'This is a test or inbound call',
+    systemPrompt: '',
+    transcript: [] as Array<{ role: 'agent' | 'user'; content: string }>,
+    resolve: () => {},
+  };
 
   log.info(`[retell] Call ${callId} connected — agent ${callInfo.agentName} on task: ${callInfo.task}`);
 
-  // Build the phone-call system prompt from the agent's existing prompt
-  const phoneSystemPrompt = `${callInfo.systemPrompt}
+  // Build the phone-call system prompt
+  const basePrompt = callInfo.systemPrompt || 'You are a helpful AI assistant from BossRoom.';
+  const phoneSystemPrompt = `${basePrompt}
 
 <phone_call>
 You are currently on a LIVE PHONE CALL. You are speaking out loud to a real person.

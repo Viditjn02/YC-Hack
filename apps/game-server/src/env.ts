@@ -30,7 +30,7 @@ const envSchema = z.object({
   GOOGLE_AI_API_KEY: z.string().optional(),
 
   // Browser-use Cloud API
-  BROWSER_USE_API_KEY: z.string().min(1),
+  BROWSER_USE_API_KEY: z.string().optional(),
 
   // Retell AI — agent phone calling
   RETELL_API_KEY: z.string().optional(),

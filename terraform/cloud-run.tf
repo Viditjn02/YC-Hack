@@ -69,18 +69,18 @@ resource "google_cloud_run_v2_service" "game_server" {
         value = var.deepgram_api_key
       }
 
-      # Inworld TTS
+      # MiniMax TTS
       env {
-        name  = "INWORLD_API_KEY"
-        value = var.inworld_api_key
+        name  = "MINIMAX_API_KEY"
+        value = var.minimax_api_key
       }
       env {
-        name  = "INWORLD_VOICE_ID"
-        value = var.inworld_voice_id
+        name  = "MINIMAX_TTS_VOICE_ID"
+        value = var.minimax_tts_voice_id
       }
       env {
-        name  = "INWORLD_TTS_MODEL_ID"
-        value = var.inworld_tts_model_id
+        name  = "MINIMAX_TTS_MODEL"
+        value = var.minimax_tts_model
       }
 
       # Google AI

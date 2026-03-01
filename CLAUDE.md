@@ -23,7 +23,7 @@ scripts/              health-check.mjs, generate-env.mjs
 - **Tailwind v4** uses CSS-first config (`@import "tailwindcss"`), PostCSS plugin is `@tailwindcss/postcss`
 - **AI Gateway**: Vercel AI Gateway at `https://ai-gateway.vercel.sh/v1`. Single `AI_GATEWAY_API_KEY` env var. Provider API keys configured as BYOK in Vercel dashboard (not in code). Uses `@ai-sdk/openai` (`createOpenAI`) with model strings like `google/gemini-3-flash`, `anthropic/claude-sonnet-4-5`, `openai/gpt-4o`.
 - **Voice — Deepgram STT**: Client opens WebSocket to `wss://api.deepgram.com/v1/listen` (model `nova-3`). Token minted server-side via `GET /api/deepgram/token` (returns `DEEPGRAM_API_KEY` directly). Frontend hook: `useVoiceInput.ts`.
-- **Voice — Inworld TTS**: Server POSTs to `https://api.inworld.ai/tts/v1/voice` with Basic auth. Returns base64 MP3 audio. Sent to client via `agent:ttsAudio` WebSocket message. Config: `INWORLD_VOICE_ID=Dominus`, `INWORLD_TTS_MODEL_ID=inworld-tts-1.5-mini`. Implementation: `apps/game-server/src/ai/tts.ts`.
+- **Voice — MiniMax TTS**: Server POSTs to `https://api.minimax.io/v1/t2a_v2` with Bearer auth. Returns hex-encoded MP3 audio (converted to base64). Sent to client via `agent:ttsAudio` WebSocket message. Config: `MINIMAX_API_KEY`, `MINIMAX_TTS_VOICE_ID=English_expressive_narrator`, `MINIMAX_TTS_MODEL=speech-2.8-hd`. Implementation: `apps/game-server/src/ai/tts.ts`.
 - **Voice — PeerJS proximity chat**: P2P audio between players via `peerjs` SDK. Uses Firebase UID as peer ID, default PeerJS Cloud server (no config needed). Push-to-talk with echo cancellation. Frontend hook: `useProximityVoice.ts`.
 - **Frontend hosting**: Cloudflare Pages with static export (`output: 'export'` in next.config.js). No API routes allowed.
 - **Single source of truth for types**: `AgentStatus`, `AgentSkill`, `ClientMessage`, `ServerMessage` all live in `libs/shared-types/`. Frontend and server import from `@bossroom/shared-types`.
@@ -39,7 +39,7 @@ scripts/              health-check.mjs, generate-env.mjs
 | **Firebase** | Auth (Google Sign-In) | `firebase` (client), `firebase-admin` (server) | ID tokens / service account | `NEXT_PUBLIC_FIREBASE_*`, `FIREBASE_*` |
 | **Composio** | OAuth tool integrations (Gmail, Calendar, Tasks, Linear) | `@composio/core`, `@composio/vercel` | API key | `COMPOSIO_API_KEY` |
 | **Deepgram** | Speech-to-text (STT) | WebSocket (`wss://api.deepgram.com/v1/listen`) | Token subprotocol | `DEEPGRAM_API_KEY` |
-| **Inworld** | Text-to-speech (TTS) | REST POST (`https://api.inworld.ai/tts/v1/voice`) | Basic auth | `INWORLD_API_KEY`, `INWORLD_VOICE_ID`, `INWORLD_TTS_MODEL_ID` |
+| **MiniMax** | Text-to-speech (TTS) | REST POST (`https://api.minimax.io/v1/t2a_v2`) | Bearer token | `MINIMAX_API_KEY`, `MINIMAX_TTS_VOICE_ID`, `MINIMAX_TTS_MODEL` |
 | **PeerJS** | P2P proximity voice chat | `peerjs` | Peer ID (Firebase UID) | None (uses PeerJS Cloud) |
 | **Visa VIC** | Intelligent Commerce (product search, payments) | MCP (`@visa/mcp-client`) | API key + client ID | `VISA_VIC_API_KEY`, `VISA_EXTERNAL_CLIENT_ID`, etc. |
 | **Cloud SQL** | PostgreSQL database | `pg` + Drizzle ORM | Connection string | `DATABASE_URL` |
@@ -92,7 +92,7 @@ cd terraform && terraform apply
 - `ALLOWED_ORIGIN` — Cloudflare Pages URL for CORS
 - `COMPOSIO_API_KEY` — Composio agent tools
 - `DEEPGRAM_API_KEY` — Deepgram speech-to-text
-- `INWORLD_API_KEY`, `INWORLD_VOICE_ID`, `INWORLD_TTS_MODEL_ID` — Inworld TTS
+- `MINIMAX_API_KEY`, `MINIMAX_TTS_VOICE_ID`, `MINIMAX_TTS_MODEL` — MiniMax TTS
 - `GOOGLE_AI_API_KEY` — Google AI API key
 - `VISA_VIC_API_KEY`, `VISA_VIC_API_KEY_SS`, `VISA_EXTERNAL_CLIENT_ID`, `VISA_EXTERNAL_APP_ID` — Visa VIC MCP (optional)
 
@@ -184,7 +184,7 @@ The server is organized into domain modules under `apps/game-server/src/domains/
 
 - Firebase Admin SDK: `apps/game-server/src/auth/firebase-admin.ts` — `verifyToken()` helper
 - AI Gateway client: `apps/game-server/src/ai/gateway.ts` — `createOpenAI` with Vercel AI Gateway
-- TTS synthesis: `apps/game-server/src/ai/tts.ts` — Inworld API integration
+- TTS synthesis: `apps/game-server/src/ai/tts.ts` — MiniMax API integration
 - Composio client: `apps/game-server/src/ai/composio.ts` — tool integration
 - Composio OAuth routes: `apps/game-server/src/http/composio-auth.ts`
 - MCP manager: `apps/game-server/src/ai/mcp.ts` — external tool server connections
@@ -221,7 +221,7 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 - `agent:chatStream` — streaming text delta
 - `agent:toolExecution` — tool call started/completed/failed
 - `agent:conversationHistory` — replay past messages on reconnect
-- `agent:ttsAudio` — base64 MP3 audio from Inworld TTS
+- `agent:ttsAudio` — base64 MP3 audio from MiniMax TTS
 - `workspace:build` — dynamic agent workspace created
 - `workspace:snapshot` — full workspace state (agents, scratchpad, status)
 - `workspace:list` — list of user's active workspaces
@@ -252,6 +252,6 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 - Docker builds must target `linux/amd64` for Cloud Run — use Cloud Build (`gcloud builds submit`) instead of local `docker build` on ARM machines
 - Cloud Run requires `volume_mounts` for Cloud SQL proxy socket — without it the DB connection fails silently
 - Deepgram token endpoint (`/api/deepgram/token`) currently returns the raw API key — fine for hackathon, not production
-- Inworld TTS uses Basic auth (`Authorization: Basic <INWORLD_API_KEY>`)
+- MiniMax TTS uses Bearer auth (`Authorization: Bearer <MINIMAX_API_KEY>`)
 - PeerJS uses default cloud server — no self-hosted config needed
 - `NEXT_PUBLIC_VOICE_ENABLED` must be `true` at build time for voice features to appear

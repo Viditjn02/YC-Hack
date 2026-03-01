@@ -21,10 +21,10 @@ const envSchema = z.object({
   // Voice: Deepgram STT (server-only token minting)
   DEEPGRAM_API_KEY: z.string().optional(),
 
-  // Voice: Inworld TTS
-  INWORLD_API_KEY: z.string().optional(),
-  INWORLD_VOICE_ID: z.string().default('Dominus'),
-  INWORLD_TTS_MODEL_ID: z.string().default('inworld-tts-1.5-mini'),
+  // Voice: MiniMax TTS
+  MINIMAX_API_KEY: z.string().optional(),
+  MINIMAX_TTS_VOICE_ID: z.string().default('English_expressive_narrator'),
+  MINIMAX_TTS_MODEL: z.string().default('speech-2.8-hd'),
 
   // Google AI
   GOOGLE_AI_API_KEY: z.string().optional(),

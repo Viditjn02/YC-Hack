@@ -59,22 +59,22 @@ variable "deepgram_api_key" {
   sensitive   = true
 }
 
-variable "inworld_api_key" {
-  description = "Inworld API key for TTS"
+variable "minimax_api_key" {
+  description = "MiniMax API key for TTS"
   type        = string
   sensitive   = true
 }
 
-variable "inworld_voice_id" {
-  description = "Inworld voice ID"
+variable "minimax_tts_voice_id" {
+  description = "MiniMax TTS voice ID"
   type        = string
-  default     = "Dominus"
+  default     = "English_expressive_narrator"
 }
 
-variable "inworld_tts_model_id" {
-  description = "Inworld TTS model ID"
+variable "minimax_tts_model" {
+  description = "MiniMax TTS model"
   type        = string
-  default     = "inworld-tts-1.5-mini"
+  default     = "speech-2.8-hd"
 }
 
 variable "composio_api_key" {

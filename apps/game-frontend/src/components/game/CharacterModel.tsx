@@ -28,9 +28,10 @@ export function CharacterModel({
   color,
   scale = 2.2,
 }: CharacterModelProps) {
+  const safeUrl = url || '/models/characters/agent-taskmaster.glb';
   const group = useRef<Group>(null);
   const prevAnimation = useRef(animation);
-  const { scene, animations } = useGLTF(url);
+  const { scene, animations } = useGLTF(safeUrl);
   
   const clone = useMemo(() => {
     try {
@@ -72,7 +73,7 @@ export function CharacterModel({
   useEffect(() => {
     if (animations.length > 0) {
       const animNames = animations.map(a => a.name).join(', ');
-      console.log(`[CharacterModel] Available animations for ${url}:`, animNames);
+      console.log(`[CharacterModel] Available animations for ${safeUrl}:`, animNames);
     }
   }, [animations, url]);
 

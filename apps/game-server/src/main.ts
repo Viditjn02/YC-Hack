@@ -115,7 +115,17 @@ wss.on('close', () => {
 // Track per-connection workspace subscription
 const wsSubscriptions = new Map<WebSocket, string>();
 
-wss.on('connection', (ws: WebSocket) => {
+wss.on('connection', (ws: WebSocket, req) => {
+  const url = req.url ?? '';
+
+  // Retell LLM callback — separate from game WebSocket
+  if (url.startsWith('/retell-llm/')) {
+    const callId = url.split('/retell-llm/')[1];
+    log.info(`[ws] Retell LLM connection for call ${callId}`);
+    handleRetellWebSocket(ws, callId);
+    return;
+  }
+
   log.debug('[ws] new connection');
   alive.add(ws);
   ws.on('pong', () => alive.add(ws));

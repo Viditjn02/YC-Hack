@@ -32,6 +32,11 @@ const envSchema = z.object({
   // Browser-use Cloud API
   BROWSER_USE_API_KEY: z.string().min(1),
 
+  // Retell AI — agent phone calling
+  RETELL_API_KEY: z.string().optional(),
+  RETELL_AGENT_ID: z.string().optional(),
+  RETELL_FROM_NUMBER: z.string().optional(),
+
   // Visa Intelligent Commerce (VIC) MCP
   VISA_VIC_API_KEY: z.string().optional(),
   VISA_VIC_API_KEY_SS: z.string().optional(),

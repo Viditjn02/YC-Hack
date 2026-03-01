@@ -3,5 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "dependencies": {}
+  "dependencies": {
+    "retell-sdk": "^5.5.0"
+  }
 }

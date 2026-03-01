@@ -18,6 +18,8 @@ import type { WorkspaceRepository } from '../workspaces/repository.js';
 import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool, createPeekConversationTool } from './skillTools.js';
 import { createPaymentTools } from './paymentTools.js';
 import { createBrowseWebTool } from './browseWebTool.js';
+import { createPhoneCallTool } from './phoneTools.js';
+import { env } from '../../env.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -565,6 +567,16 @@ No other text.`,
         ws,
       });
       tools = { ...tools, ...browseWebTool };
+
+      // Phone call tool (all dynamic agents — gracefully absent if RETELL_API_KEY not set)
+      const phoneTools = createPhoneCallTool({
+        agentId,
+        agentName: dynamicAgent.name,
+        systemPrompt: dynamicAgent.systemPrompt,
+        fromNumber: env.RETELL_FROM_NUMBER ?? '',
+        retellAgentId: env.RETELL_AGENT_ID ?? '',
+      });
+      tools = { ...tools, ...phoneTools };
 
       const toolNames = Object.keys(tools);
       const hasBrowseWeb = toolNames.includes('browse_web');

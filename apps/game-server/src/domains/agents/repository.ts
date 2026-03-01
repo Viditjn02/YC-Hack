@@ -31,6 +31,7 @@ export function createAgentRepository(deps: { workspaceRepo: WorkspaceRepository
   const { workspaceRepo, skillService } = deps;
   const agents = new Map<string, AgentWithStatus>();
   const dynamicAgents = new Map<string, RegisteredDynamicAgent>();
+  const activeBrowserTasks = new Map<string, string>(); // agentId → browser-use taskId
 
   // Initialize from AGENT_DEFS (only Receptionist now)
   for (const agent of AGENT_DEFS) {
@@ -230,6 +231,20 @@ export function createAgentRepository(deps: { workspaceRepo: WorkspaceRepository
         log.info(`[agent-repo] Rehydrated agent: ${registered.name} (${registered.agentId})`);
       }
       return loaded;
+    },
+
+    // --- Browser task tracking ---
+
+    setBrowserTask(agentId: string, taskId: string): void {
+      activeBrowserTasks.set(agentId, taskId);
+    },
+
+    getBrowserTask(agentId: string): string | undefined {
+      return activeBrowserTasks.get(agentId);
+    },
+
+    clearBrowserTask(agentId: string): void {
+      activeBrowserTasks.delete(agentId);
     },
 
     /** Load all agents for all active workspaces of a user. */

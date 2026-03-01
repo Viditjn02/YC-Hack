@@ -79,7 +79,27 @@ Documents (for deliverables):
 </workspace>`);
   }
 
-  // --- 4. Tone (always) ---
+  // --- 4. Browser-use (always for workspace agents) ---
+  if (options?.hasWorkspace) {
+    parts.push(
+`<browser_use priority="critical">
+You have a browse_web tool that opens a real browser and autonomously navigates the web. USE IT AGGRESSIVELY.
+
+When to use browse_web:
+- ANY task that involves looking something up online — use browse_web FIRST
+- Researching a person, company, topic, or product
+- Visiting specific websites or URLs
+- Gathering data, stats, news, or information
+- Checking social media profiles, LinkedIn, GitHub, etc.
+- Any "find out about X" or "look up Y" request
+
+You should default to using browse_web for almost every task. Even if you think you know the answer, use browse_web to get fresh, real-time data. Your training data is stale — the web is current.
+
+Do NOT skip browse_web and rely on your memory. The user wants you to actually go look things up.
+</browser_use>`);
+  }
+
+  // --- 5. Tone (always) ---
   parts.push(
 `<tone>
 Write like you're texting a coworker on slack. all lowercase, casual, no periods at the end. contractions always. be human.

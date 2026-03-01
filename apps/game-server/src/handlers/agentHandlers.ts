@@ -47,6 +47,39 @@ export function handleAgentMessage(
   );
 }
 
+export async function handleAgentStopBrowserTask(
+  ws: WebSocket,
+  payload: { agentId: string },
+  deps: AgentHandlerDeps,
+) {
+  const { players, agents } = deps;
+  const uid = players.getUidByWs(ws);
+  if (!uid) return;
+  await agents.stopBrowserTask(payload.agentId);
+}
+
+export async function handleAgentPauseBrowserTask(
+  ws: WebSocket,
+  payload: { agentId: string },
+  deps: AgentHandlerDeps,
+) {
+  const { players, agents } = deps;
+  const uid = players.getUidByWs(ws);
+  if (!uid) return;
+  await agents.pauseBrowserTask(payload.agentId);
+}
+
+export async function handleAgentResumeBrowserTask(
+  ws: WebSocket,
+  payload: { agentId: string },
+  deps: AgentHandlerDeps,
+) {
+  const { players, agents } = deps;
+  const uid = players.getUidByWs(ws);
+  if (!uid) return;
+  await agents.resumeBrowserTask(payload.agentId);
+}
+
 export function handleAgentStopInteract(
   ws: WebSocket,
   payload: { agentId: string },

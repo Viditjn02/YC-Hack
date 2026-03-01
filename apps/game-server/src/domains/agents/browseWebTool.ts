@@ -42,7 +42,6 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
         'Opens a real browser to search the web and research topics. ' +
         'Use this for web search tasks: researching people, companies, topics, visiting URLs, ' +
         'gathering information, checking profiles, or looking up data. ' +
-        'Do NOT use for actions you already have tools for (email, calendar, etc). ' +
         'Provide a clear, detailed description of what to search for or which sites to visit.',
       inputSchema: z.object({
         task: z.string().describe('A detailed description of what to do in the browser. Be specific about what websites to visit, what information to find, or what actions to take.'),

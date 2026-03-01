@@ -90,3 +90,10 @@ variable "google_ai_api_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "browser_use_api_key" {
+  description = "Browser-use Cloud API key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

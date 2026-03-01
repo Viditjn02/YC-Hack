@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useScratchpadStore } from '@/stores/scratchpadStore';
 import { useEmbedStore } from '@/stores/embedStore';
 import { useProductStore } from '@/stores/productStore';
+import { useBrowserUseStore } from '@/stores/browserUseStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
@@ -290,6 +291,16 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'workspace:embedPanel': {
         useEmbedStore.getState().addEmbed(msg.payload.embed);
+        break;
+      }
+
+      case 'agent:browserUseStatus': {
+        const { agentId, agentName, active, liveUrl } = msg.payload;
+        if (active) {
+          useBrowserUseStore.getState().setActive(agentId, agentName, liveUrl);
+        } else {
+          useBrowserUseStore.getState().setInactive(agentId);
+        }
         break;
       }
 

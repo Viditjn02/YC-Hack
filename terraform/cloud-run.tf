@@ -88,6 +88,12 @@ resource "google_cloud_run_v2_service" "game_server" {
         name  = "GOOGLE_AI_API_KEY"
         value = var.google_ai_api_key
       }
+
+      # Browser-use Cloud API
+      env {
+        name  = "BROWSER_USE_API_KEY"
+        value = var.browser_use_api_key
+      }
     }
 
     volumes {

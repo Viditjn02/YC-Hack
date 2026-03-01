@@ -29,6 +29,9 @@ const envSchema = z.object({
   // Google AI
   GOOGLE_AI_API_KEY: z.string().optional(),
 
+  // Browser-use Cloud API
+  BROWSER_USE_API_KEY: z.string().min(1),
+
   // Visa Intelligent Commerce (VIC) MCP
   VISA_VIC_API_KEY: z.string().optional(),
   VISA_VIC_API_KEY_SS: z.string().optional(),

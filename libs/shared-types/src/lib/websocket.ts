@@ -16,6 +16,10 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('workspace:subscribe'), payload: z.object({ workspaceId: z.string() }) }),
   z.object({ type: z.literal('workspace:archive'), payload: z.object({ workspaceId: z.string() }) }),
   z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
+  // Browser task control
+  z.object({ type: z.literal('agent:stopBrowserTask'), payload: z.object({ agentId: z.string() }) }),
+  z.object({ type: z.literal('agent:pauseBrowserTask'), payload: z.object({ agentId: z.string() }) }),
+  z.object({ type: z.literal('agent:resumeBrowserTask'), payload: z.object({ agentId: z.string() }) }),
   // Direct purchase (bypasses LLM)
   z.object({ type: z.literal('shop:purchase'), payload: z.object({
     productName: z.string(),
@@ -119,6 +123,13 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       freeShipping: z.boolean().optional(),
       recommended: z.boolean().optional(),
     })),
+  }) }),
+  // Browser-use live status
+  z.object({ type: z.literal('agent:browserUseStatus'), payload: z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    active: z.boolean(),
+    liveUrl: z.string().optional(),
   }) }),
   // Direct purchase result
   z.object({ type: z.literal('shop:purchaseResult'), payload: z.object({

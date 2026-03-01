@@ -6,6 +6,7 @@ import { getModel } from '../../ai/gateway.js';
 import { getComposioTools } from '../../ai/composio.js';
 import { mcpManager } from '../../ai/mcp.js';
 import { synthesizeSpeech } from '../../ai/tts.js';
+import * as browserUse from '../../ai/browser-use.js';
 import { log } from '../../logger.js';
 import type { AgentRepository } from './repository.js';
 import type { ConversationService } from '../conversations/service.js';
@@ -16,6 +17,7 @@ import type { UserRepository } from '../users/repository.js';
 import type { WorkspaceRepository } from '../workspaces/repository.js';
 import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool, createPeekConversationTool } from './skillTools.js';
 import { createPaymentTools } from './paymentTools.js';
+import { createBrowseWebTool } from './browseWebTool.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -315,7 +317,19 @@ No other text.`,
         agentRepo,
         workspaceId: targetAgent.workspaceId,
       });
-      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools, ...workerFinishTaskTools, ...workerPeekTools };
+      const workerBrowseWebTool = createBrowseWebTool({
+        agentId: targetAgent.agentId,
+        agentName: targetAgent.name,
+        agentPersonality: targetAgent.personality,
+        workspaceId: targetAgent.workspaceId,
+        agentRepo,
+        playerService,
+        ws,
+      });
+      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools, ...workerFinishTaskTools, ...workerPeekTools, ...workerBrowseWebTool };
+
+      const workerToolNames = Object.keys(workerToolsFinal);
+      log.info(`[agent-tools] ${targetAgent.name} (delegated) tools (${workerToolNames.length}): ${workerToolNames.join(', ')} | browse_web=${workerToolNames.includes('browse_web') ? 'YES' : 'NO'}`);
 
       // Set to working
       agentRepo.setStatus(targetAgent.agentId, 'working');
@@ -334,6 +348,15 @@ No other text.`,
         messages: [{ role: 'user' as const, content: taskDescription }],
         tools: workerToolsFinal,
         stopWhen: stepCountIs(25),
+        onChunk: ({ chunk }) => {
+          if (chunk.type === 'tool-call') {
+            log.info(`[tool-call] ${targetAgent.name} (delegated) calling: ${chunk.toolName}${chunk.toolName === 'browse_web' ? ' *** BROWSER-USE INVOKED ***' : ''}`);
+            playerService.send(ws, {
+              type: 'agent:toolExecution',
+              payload: { agentId: targetAgent.agentId, toolName: chunk.toolName, status: 'started' },
+            });
+          }
+        },
       });
 
       let fullResponse = '';
@@ -531,7 +554,23 @@ No other text.`,
         tools = { ...tools, ...delegateTools };
       }
 
-      const hasTools = Object.keys(tools).length > 0;
+      // Browse web tool (browser-use Cloud API)
+      const browseWebTool = createBrowseWebTool({
+        agentId,
+        agentName: dynamicAgent.name,
+        agentPersonality: dynamicAgent.personality,
+        workspaceId: dynamicAgent.workspaceId,
+        agentRepo,
+        playerService,
+        ws,
+      });
+      tools = { ...tools, ...browseWebTool };
+
+      const toolNames = Object.keys(tools);
+      const hasBrowseWeb = toolNames.includes('browse_web');
+      log.info(`[agent-tools] ${dynamicAgent.name} tools (${toolNames.length}): ${toolNames.join(', ')} | browse_web=${hasBrowseWeb ? 'YES' : 'NO'}`);
+
+      const hasTools = toolNames.length > 0;
 
       const result = streamText({
         model,
@@ -540,6 +579,7 @@ No other text.`,
         ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
+            log.info(`[tool-call] ${dynamicAgent.name} calling: ${chunk.toolName}${chunk.toolName === 'browse_web' ? ' *** BROWSER-USE INVOKED ***' : ''}`);
             playerService.send(ws, {
               type: 'agent:toolExecution',
               payload: { agentId, toolName: chunk.toolName, status: 'started' },
@@ -549,7 +589,6 @@ No other text.`,
         onStepFinish: ({ toolCalls, toolResults }) => {
           for (let i = 0; i < toolCalls.length; i++) {
             const tc = toolCalls[i];
-            // Belt-and-suspenders: track tool calls via onStepFinish
             if (tc.toolName === 'finish_task') calledFinishTask = true;
             if (tc.toolName === 'write_scratchpad') calledWriteScratchpad = true;
             const tr = toolResults[i];
@@ -987,6 +1026,28 @@ No other text.`,
       for (const agentId of agentIds) {
         agentRepo.setStatus(agentId, 'idle');
       }
+    },
+
+    /** Stop an active browser-use task for an agent. */
+    async stopBrowserTask(agentId: string) {
+      const taskId = agentRepo.getBrowserTask(agentId);
+      if (!taskId) return;
+      await browserUse.stopTask(taskId);
+      agentRepo.clearBrowserTask(agentId);
+    },
+
+    /** Pause an active browser-use task for an agent. */
+    async pauseBrowserTask(agentId: string) {
+      const taskId = agentRepo.getBrowserTask(agentId);
+      if (!taskId) return;
+      await browserUse.pauseTask(taskId);
+    },
+
+    /** Resume a paused browser-use task for an agent. */
+    async resumeBrowserTask(agentId: string) {
+      const taskId = agentRepo.getBrowserTask(agentId);
+      if (!taskId) return;
+      await browserUse.resumeTask(taskId);
     },
 
     /** Trigger scratchpad watcher from external callers (e.g. user notes). */

@@ -6,8 +6,8 @@ import { log } from '../../logger.js';
 import type { AgentRepository } from './repository.js';
 import type { PlayerService } from '../players/service.js';
 
-const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_TIME_MS = 10 * 60 * 1_000; // 10 minutes
+const POLL_INTERVAL_MS = 2_000;
+const QUICK_TIMEOUT_MS = 10_000;
 
 interface BrowseWebToolDeps {
   agentId: string;
@@ -21,10 +21,10 @@ interface BrowseWebToolDeps {
 
 /**
  * Creates a `browse_web` tool that dynamic agents can call to autonomously
- * browse the web via browser-use Cloud API. The LLM decides when to use it.
+ * browse the web via browser-use Cloud API v2.
  *
- * Sends live browser URL via embed panel and relays step progress via
- * toolExecution events. Returns the browser-use output when done.
+ * Sends live browser URL via embed panel and polls task status.
+ * Returns the browser-use output when done.
  */
 export function createBrowseWebTool(deps: BrowseWebToolDeps) {
   const { agentId, agentName, agentPersonality, workspaceId, agentRepo, playerService, ws } = deps;
@@ -53,20 +53,19 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
         log.info(`[browse_web] Agent: ${agentName} | Task: ${task.slice(0, 200)}`);
 
         try {
-          const browserTask = await browserUse.runTask(taskPrompt);
-          log.info(`[browse_web] Task created: id=${browserTask.id} status=${browserTask.status} live_url=${browserTask.live_url ?? 'none'}`);
-          agentRepo.setBrowserTask(agentId, browserTask.id);
+          const result = await browserUse.runTask(taskPrompt);
+          agentRepo.setBrowserTask(agentId, result.taskId);
 
-          sendBrowserStatus(true, browserTask.live_url);
+          sendBrowserStatus(true, result.liveUrl);
 
-          if (browserTask.live_url) {
+          if (result.liveUrl) {
             playerService.send(ws, {
               type: 'workspace:embedPanel',
               payload: {
                 workspaceId,
                 embed: {
-                  id: `browser-${browserTask.id}`,
-                  url: browserTask.live_url,
+                  id: `browser-${result.taskId}`,
+                  url: result.liveUrl,
                   title: `${agentName}'s Browser`,
                   type: 'other',
                   agentId,
@@ -76,7 +75,7 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
             });
           }
 
-          const output = await pollBrowserTask(browserTask.id, agentId, agentName, agentRepo, playerService, ws);
+          const output = await pollBrowserTask(result.taskId, agentId, agentName, agentRepo);
 
           log.info(`[browse_web] ======= BROWSER-USE FINISHED =======`);
           log.info(`[browse_web] Agent: ${agentName} | Output: ${(output ?? '').slice(0, 200)}`);
@@ -88,7 +87,7 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
           log.error(`[browse_web] ======= BROWSER-USE ERROR ======= Agent: ${agentName} | ${errMsg}`);
           agentRepo.clearBrowserTask(agentId);
           sendBrowserStatus(false);
-          return `Error: Browser task failed — ${errMsg}`;
+          return `Error: Browser task failed — ${errMsg}. Use your Composio search tools (COMPOSIO_SEARCH_TOOLS) as a fallback to complete this research task.`;
         }
       },
     }),
@@ -96,62 +95,43 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
 }
 
 /**
- * Poll a browser-use task until completion, relaying step progress to the frontend.
+ * Poll a browser-use task with a 10s timeout.
+ * If not finished in time, stop the task and tell the LLM to use Composio fallback.
  */
 function pollBrowserTask(
   taskId: string,
   agentId: string,
   agentName: string,
   agentRepo: AgentRepository,
-  playerService: PlayerService,
-  ws: WebSocket,
 ): Promise<string> {
   return new Promise((resolve) => {
     const startTime = Date.now();
-    let lastStepCount = 0;
 
     const poll = async () => {
       try {
         const status = await browserUse.getTaskStatus(taskId);
-        log.debug(`[browse_web] Poll ${agentName}: status=${status.status} steps=${status.steps?.length ?? 0}`);
-
-        if (status.steps && status.steps.length > lastStepCount) {
-          for (let i = lastStepCount; i < status.steps.length; i++) {
-            const step = status.steps[i];
-            log.info(`[browse_web] ${agentName} step ${step.step_number}: ${step.description?.slice(0, 100)}`);
-            playerService.send(ws, {
-              type: 'agent:toolExecution',
-              payload: {
-                agentId,
-                toolName: `browser_step_${step.step_number}`,
-                status: step.status === 'failed' ? 'failed' : 'completed',
-                result: step.description,
-              },
-            });
-          }
-          lastStepCount = status.steps.length;
-        }
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        log.debug(`[browse_web] Poll ${agentName}: status=${status.status} elapsed=${elapsed}s`);
 
         if (status.status === 'finished') {
           agentRepo.clearBrowserTask(agentId);
-          log.info(`[browse_web] ${agentName} task finished successfully`);
+          log.info(`[browse_web] ${agentName} task finished in ${elapsed}s (success=${status.isSuccess})`);
           resolve(status.output ?? '(no output)');
           return;
         }
 
-        if (status.status === 'failed' || status.status === 'stopped') {
+        if (status.status === 'stopped') {
           agentRepo.clearBrowserTask(agentId);
-          const errMsg = `Browser task ${status.status}: ${status.output ?? 'unknown error'}`;
-          log.warn(`[browse_web] ${agentName}: ${errMsg}`);
-          resolve(`Error: ${errMsg}`);
+          log.warn(`[browse_web] ${agentName}: task stopped after ${elapsed}s`);
+          resolve(`Error: Browser task stopped. Use your Composio search tools (COMPOSIO_SEARCH_TOOLS) as a fallback.`);
           return;
         }
 
-        if (Date.now() - startTime > MAX_POLL_TIME_MS) {
-          log.warn(`[browse_web] ${agentName} task ${taskId} timed out after ${MAX_POLL_TIME_MS / 1000}s`);
+        if (Date.now() - startTime > QUICK_TIMEOUT_MS) {
+          log.warn(`[browse_web] ${agentName} task ${taskId} timed out after ${QUICK_TIMEOUT_MS / 1000}s — stopping`);
           browserUse.stopTask(taskId).catch(() => {});
           agentRepo.clearBrowserTask(agentId);
-          resolve('Error: Browser task timed out after 10 minutes');
+          resolve(`Browser task is taking too long (>${QUICK_TIMEOUT_MS / 1000}s). Use your Composio search tools (COMPOSIO_SEARCH_TOOLS, COMPOSIO_MULTI_EXECUTE_TOOL) as a fallback to complete this research task instead.`);
           return;
         }
 
@@ -160,7 +140,7 @@ function pollBrowserTask(
         const errMsg = err instanceof Error ? err.message : String(err);
         log.error(`[browse_web] ${agentName} poll error: ${errMsg}`);
         agentRepo.clearBrowserTask(agentId);
-        resolve(`Error: Browser poll failed — ${errMsg}`);
+        resolve(`Error: Browser poll failed — ${errMsg}. Use your Composio search tools as a fallback.`);
       }
     };
 

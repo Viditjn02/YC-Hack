@@ -18,8 +18,6 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
   // Browser task control
   z.object({ type: z.literal('agent:stopBrowserTask'), payload: z.object({ agentId: z.string() }) }),
-  z.object({ type: z.literal('agent:pauseBrowserTask'), payload: z.object({ agentId: z.string() }) }),
-  z.object({ type: z.literal('agent:resumeBrowserTask'), payload: z.object({ agentId: z.string() }) }),
   // Direct purchase (bypasses LLM)
   z.object({ type: z.literal('shop:purchase'), payload: z.object({
     productName: z.string(),

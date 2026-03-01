@@ -1048,20 +1048,6 @@ No other text.`,
       agentRepo.clearBrowserTask(agentId);
     },
 
-    /** Pause an active browser-use task for an agent. */
-    async pauseBrowserTask(agentId: string) {
-      const taskId = agentRepo.getBrowserTask(agentId);
-      if (!taskId) return;
-      await browserUse.pauseTask(taskId);
-    },
-
-    /** Resume a paused browser-use task for an agent. */
-    async resumeBrowserTask(agentId: string) {
-      const taskId = agentRepo.getBrowserTask(agentId);
-      if (!taskId) return;
-      await browserUse.resumeTask(taskId);
-    },
-
     /** Trigger scratchpad watcher from external callers (e.g. user notes). */
     onScratchpadWrite(
       workspaceId: string,

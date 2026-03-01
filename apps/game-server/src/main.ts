@@ -16,7 +16,7 @@ import { createWorkspaceRepository } from './domains/workspaces/repository.js';
 import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
 import { handlePlayerSettings } from './handlers/playerSettings.js';
-import { handleAgentInteract, handleAgentMessage, handleAgentStopInteract, handleAgentStopBrowserTask, handleAgentPauseBrowserTask, handleAgentResumeBrowserTask } from './handlers/agentHandlers.js';
+import { handleAgentInteract, handleAgentMessage, handleAgentStopInteract, handleAgentStopBrowserTask } from './handlers/agentHandlers.js';
 import { handleRetellWebSocket } from './handlers/retellHandler.js';
 
 // --- Composition Root ---
@@ -210,10 +210,6 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       return handleAgentStopInteract(ws, msg.payload, { players, agents });
     case 'agent:stopBrowserTask':
       return handleAgentStopBrowserTask(ws, msg.payload, { players, agents });
-    case 'agent:pauseBrowserTask':
-      return handleAgentPauseBrowserTask(ws, msg.payload, { players, agents });
-    case 'agent:resumeBrowserTask':
-      return handleAgentResumeBrowserTask(ws, msg.payload, { players, agents });
     case 'voice:talking': {
       const uid = players.getUidByWs(ws);
       if (!uid) return;

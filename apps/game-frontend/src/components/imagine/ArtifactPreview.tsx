@@ -138,7 +138,7 @@ function ArtifactContent({ agentId }: { agentId: string }) {
           {/* Streaming text — live output */}
           {streamingText && (
             <div className="prose prose-invert prose-sm max-w-none">
-              <Markdown>{streamingText}</Markdown>
+              <Markdown content={streamingText} />
               <span className="inline-block w-0.5 h-4 bg-indigo-400 animate-pulse ml-0.5" />
             </div>
           )}
@@ -146,7 +146,7 @@ function ArtifactContent({ agentId }: { agentId: string }) {
           {/* Latest completed output */}
           {!streamingText && latestOutput && latestOutput.role === 'agent' && (
             <div className="prose prose-invert prose-sm max-w-none">
-              <Markdown>{latestOutput.content}</Markdown>
+              <Markdown content={latestOutput.content} />
             </div>
           )}
 
@@ -192,7 +192,8 @@ export function ArtifactPreview() {
 
   if (workspaceAgents.length === 0) return null;
 
-  const activeAgent = workspaceAgents.find((a) => a.id === activeTab);
+  const _activeAgent = workspaceAgents.find((a) => a.id === activeTab);
+  void _activeAgent;
 
   return (
     <div className="flex flex-col h-full bg-[#0f0f1a] border-l border-white/[0.06]">

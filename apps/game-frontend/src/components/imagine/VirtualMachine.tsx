@@ -54,7 +54,6 @@ function VMBrowserWindow({ agentId, isActive, onFocus }: { agentId: string; isAc
     [agentEvents],
   );
 
-  const latestTool = toolEvents.at(-1);
   const activeTool = toolEvents.filter((e) => e.toolStatus === 'started').at(-1);
   const agentEmbeds = useMemo(
     () => embeds.filter((e) => e.agentId === agentId),
@@ -162,7 +161,7 @@ function VMBrowserWindow({ agentId, isActive, onFocus }: { agentId: string; isAc
             {streamingText && (
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
                 <div className="text-[11px] text-white/60 leading-relaxed">
-                  <Markdown>{streamingText}</Markdown>
+                  <Markdown content={streamingText} />
                   <span className="animate-pulse text-indigo-400">|</span>
                 </div>
               </div>
@@ -175,7 +174,7 @@ function VMBrowserWindow({ agentId, isActive, onFocus }: { agentId: string; isAc
               return (
                 <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
                   <div className="text-[11px] text-white/50 leading-relaxed line-clamp-6">
-                    <Markdown>{lastMsg.content}</Markdown>
+                    <Markdown content={lastMsg.content} />
                   </div>
                 </div>
               );

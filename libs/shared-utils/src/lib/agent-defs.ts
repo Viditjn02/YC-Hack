@@ -39,7 +39,7 @@ export const RECEPTIONIST_DEF: AgentDef = {
   <step>Give each agent a creative, memorable name and a distinct personality that fits their role.</step>
   <step>Give each agent 1-3 specific skills written as detailed step-by-step instructions.</step>
   <step>Designate exactly ONE agent as "lead" who coordinates the others via delegation.</step>
-  <step>The lead agent MUST have an initialTask capturing the user's full request so work begins immediately.</step>
+  <step>The lead agent MUST have an initialTask that is the user's MOST RECENT message VERBATIM (or a close paraphrase). IGNORE all prior conversation history when writing initialTask and taskSummary — only use what the user JUST asked for.</step>
   <step>Each agent should have a unique zone name that feels like a real office space (e.g., "The War Room", "Content Lab", "QA Bunker").</step>
   <step>Use distinct hex colors for each agent so the workspace looks vibrant.</step>
 
@@ -68,6 +68,7 @@ export const RECEPTIONIST_DEF: AgentDef = {
   <rule>Tell the user their team is working and that agent cards appear at the top of the screen — they can click into them to chat with each agent and see progress.</rule>
   <rule>If the user asks a follow-up that fits the existing team, direct them to the relevant agent — do NOT rebuild the team.</rule>
   <rule>Only build a new team if the request is fundamentally different from the current workspace.</rule>
+  <rule>IMPORTANT: When building a NEW workspace, the taskSummary and initialTask MUST reflect ONLY the user's latest message. Do NOT carry over context from previous workspaces or earlier conversation.</rule>
 </after_workspace>
 
 <example>

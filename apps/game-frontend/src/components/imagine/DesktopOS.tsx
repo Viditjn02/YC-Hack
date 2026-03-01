@@ -287,12 +287,11 @@ function AgentWindowContent({ agentId, agentName }: { agentId: string; agentName
       {/* Render messages in order */}
       {messages.map((msg, i) => {
         if (msg.role === 'agent') {
-          const cleaned = stripComposioLinks(msg.content);
-          if (!cleaned) return null;
+          if (!msg.content?.trim()) return null;
           return (
-            <div key={`m-${i}`} className="prose prose-sm max-w-none text-[#333] text-[12px] leading-relaxed"
+            <div key={`m-${i}`} className="prose prose-sm max-w-none text-[#333] text-[12px] leading-relaxed [&_a]:text-indigo-600 [&_a]:underline [&_a]:cursor-pointer"
               style={{ animation: 'desktopFadeIn 0.3s ease-out' }}>
-              <Markdown>{cleaned}</Markdown>
+              <Markdown content={msg.content} />
             </div>
           );
         }
@@ -328,13 +327,12 @@ function AgentWindowContent({ agentId, agentName }: { agentId: string; agentName
 
       {/* Scratchpad entries from this agent (always show — this is their work output) */}
       {agentScratchpad.map((entry) => {
-        const cleaned = stripComposioLinks(entry.content);
-        if (!cleaned) return null;
+        if (!entry.content?.trim()) return null;
         return (
           <div key={entry.id} className="p-2 rounded-md bg-amber-50/60 border border-amber-200/30"
             style={{ animation: 'desktopFadeIn 0.3s ease-out' }}>
-            <div className="prose prose-sm max-w-none text-[#444] text-[12px] leading-relaxed">
-              <Markdown>{cleaned}</Markdown>
+            <div className="prose prose-sm max-w-none text-[#444] text-[12px] leading-relaxed [&_a]:text-indigo-600 [&_a]:underline [&_a]:cursor-pointer">
+              <Markdown content={entry.content} />
             </div>
           </div>
         );
@@ -343,7 +341,7 @@ function AgentWindowContent({ agentId, agentName }: { agentId: string; agentName
       {/* Live streaming */}
       {streamingText && (
         <div className="prose prose-sm max-w-none text-[#333] text-[12px] leading-relaxed">
-          <Markdown>{streamingText}</Markdown>
+          <Markdown content={streamingText} />
           <span className="inline-block w-0.5 h-4 bg-amber-500 animate-pulse ml-0.5" />
         </div>
       )}
@@ -363,54 +361,344 @@ function AgentWindowContent({ agentId, agentName }: { agentId: string; agentName
   );
 }
 
-/* ─── Desktop Prompt Bar ─── */
+/* ─── Chat Panel — anchored bottom-right, out of the way ─── */
 
-function DesktopPromptBar() {
+function ChatPanel() {
   const [input, setInput] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const openChat = useChatStore((s) => s.openChat);
   const sendMessage = useChatStore((s) => s.sendMessage);
-  const activeAgent = useChatStore((s) => s.activeAgent);
+  const chatMessages = useChatStore((s) => s.chatMessages);
+  const streamingText = useChatStore((s) => s.streamingText);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Always show receptionist conversation — it's the main thread
+  const targetId = 'receptionist';
+  const messages = useMemo(() => chatMessages[targetId] ?? [], [chatMessages, targetId]);
+  const streaming = streamingText[targetId] ?? '';
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages.length, streaming]);
+
+  useEffect(() => {
+    if (messages.length > 0 && !expanded) setExpanded(true);
+  }, [messages.length, expanded]);
 
   const handleSend = () => {
     if (!input.trim()) return;
-    const target = activeAgent ?? 'receptionist';
-    if (!activeAgent) openChat(target);
-    sendMessage(target, input.trim());
+    openChat('receptionist');
+    sendMessage('receptionist', input.trim());
     setInput('');
+    if (!expanded) setExpanded(true);
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-[540px] px-4">
-      <div className="flex items-center bg-white/95 backdrop-blur-xl rounded-[24px] h-[48px] px-4 border border-black/[0.08] transition-shadow focus-within:shadow-2xl"
-        style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          placeholder="What do you want to build?"
-          className="flex-1 bg-transparent text-sm text-[#333] placeholder:text-[#aaa] focus:outline-none"
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim()}
-          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-            input.trim()
-              ? 'bg-imagine-terracotta text-white hover:brightness-110 scale-100'
-              : 'bg-black/[0.06] text-[#bbb] opacity-40 scale-90'
-          }`}
-        >
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-            <path d="M7 12V2M7 2L2 7M7 2L12 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+    <div className="fixed bottom-4 right-4 z-[60] w-[320px]">
+      <div
+        className="bg-white/95 backdrop-blur-xl rounded-2xl border border-black/[0.08] transition-all duration-300 overflow-hidden flex flex-col"
+        style={{ boxShadow: '0 4px 32px rgba(0,0,0,0.12)', maxHeight: expanded ? '360px' : '48px' }}
+      >
+        {/* Message history */}
+        {expanded && messages.length > 0 && (
+          <div ref={scrollRef} className="flex-1 min-h-0 max-h-[280px] overflow-y-auto px-3 pt-2.5 pb-1 space-y-1.5 border-b border-black/[0.04]">
+            {messages.map((msg, i) => {
+              if (msg.role === 'user') {
+                return (
+                  <div key={i} className="flex justify-end">
+                    <div className="bg-blue-500 text-white text-[11px] px-2.5 py-1 rounded-2xl rounded-br-sm max-w-[85%]">
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              }
+              if (msg.role === 'agent') {
+                if (!msg.content?.trim()) return null;
+                return (
+                  <div key={i} className="flex justify-start">
+                    <div className="bg-[#f3f2ee] text-[#333] text-[11px] px-2.5 py-1 rounded-2xl rounded-bl-sm max-w-[85%] prose prose-sm [&_*]:text-[11px] [&_a]:text-indigo-600 [&_a]:underline [&_a]:cursor-pointer [&_a:hover]:text-indigo-700">
+                      <Markdown content={msg.content} />
+                    </div>
+                  </div>
+                );
+              }
+              if (msg.role === 'tool') {
+                return (
+                  <div key={i} className="flex items-center gap-1 px-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${msg.status === 'completed' ? 'bg-emerald-500' : msg.status === 'started' ? 'bg-amber-400 animate-pulse' : 'bg-red-400'}`} />
+                    <span className="text-[9px] text-[#999]">{formatToolName(msg.toolName)}</span>
+                  </div>
+                );
+              }
+              return null;
+            })}
+            {streaming && (
+              <div className="flex justify-start">
+                <div className="bg-[#f3f2ee] text-[#333] text-[11px] px-2.5 py-1 rounded-2xl rounded-bl-sm max-w-[85%]">
+                  {streaming}
+                  <span className="inline-block w-0.5 h-3 bg-amber-500 animate-pulse ml-0.5" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Input row */}
+        <div className="flex items-center h-[44px] px-3 gap-1.5 shrink-0">
+          {messages.length > 0 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[#aaa] hover:text-[#666] hover:bg-black/5 transition-colors cursor-pointer shrink-0"
+            >
+              <svg className="w-2.5 h-2.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d={expanded ? 'M2 5l5 5 5-5' : 'M2 9l5-5 5 5'} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            placeholder="Ask something..."
+            className="flex-1 bg-transparent text-[13px] text-[#333] placeholder:text-[#aaa] focus:outline-none min-w-0"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0 ${
+              input.trim() ? 'bg-imagine-terracotta text-white hover:brightness-110' : 'bg-black/[0.06] text-[#bbb] opacity-40'
+            }`}
+          >
+            <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+              <path d="M7 12V2M7 2L2 7M7 2L12 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+// Exported so ImagineMode can show the chat during the workspace-setup transition
+export { ChatPanel as StandaloneChatPanel };
+
+/* ─── Code extraction helpers — pull HTML/CSS/JS from agent output ─── */
+
+function extractCodeBlocks(text: string): { html: string[]; css: string[]; js: string[] } {
+  const html: string[] = [];
+  const css: string[] = [];
+  const js: string[] = [];
+  let match;
+  const re = /```(html|css|javascript|js|tsx|jsx|typescript)?\s*\n([\s\S]*?)```/gi;
+  while ((match = re.exec(text)) !== null) {
+    const lang = (match[1] || '').toLowerCase();
+    const code = match[2].trim();
+    if (!code) continue;
+    if (lang === 'css') css.push(code);
+    else if (lang === 'html' || code.includes('<!DOCTYPE') || code.includes('<html') || code.includes('<div') || code.includes('<body') || code.includes('<head')) html.push(code);
+    else if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'tsx' || lang === 'jsx') js.push(code);
+    else if (code.includes('<') && code.includes('>')) html.push(code);
+    else js.push(code);
+  }
+  return { html, css, js };
+}
+
+function buildLivePreview(allTexts: string[]): string | null {
+  const combined = { html: [] as string[], css: [] as string[], js: [] as string[] };
+  for (const text of allTexts) {
+    const blocks = extractCodeBlocks(text);
+    combined.html.push(...blocks.html);
+    combined.css.push(...blocks.css);
+    combined.js.push(...blocks.js);
+  }
+
+  if (combined.html.length === 0 && combined.css.length === 0 && combined.js.length === 0) return null;
+
+  // Check if any HTML block is already a full document
+  const fullDoc = combined.html.find(h => h.includes('<!DOCTYPE') || h.includes('<html'));
+  if (fullDoc) {
+    let doc = fullDoc;
+    if (combined.css.length > 0 && !doc.includes(combined.css[0].slice(0, 30))) {
+      doc = doc.replace('</head>', `<style>${combined.css.join('\n')}</style></head>`);
+    }
+    if (combined.js.length > 0) {
+      doc = doc.replace('</body>', `<script>${combined.js.join('\n')}</script></body>`);
+    }
+    return doc;
+  }
+
+  // Assemble from fragments
+  const bodyHtml = combined.html.join('\n');
+  const cssText = combined.css.join('\n');
+  const jsText = combined.js.join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  ${cssText}
+</style>
+</head>
+<body>
+${bodyHtml}
+<script>${jsText}</script>
+</body>
+</html>`;
+}
+
+/* ─── Results Window — shows live preview OR summary ─── */
+
+interface ResultsWindowProps {
+  winId: string;
+  layout: { left: number; top: number; width: number; height: number };
+  zIndex: number;
+  onFocus: () => void;
+  onClose: () => void;
+  receptionistMsgs: Array<{ role: string; content: string }>;
+  entries: Array<{ id: string; content: string; authorName: string; authorColor: string }>;
+  agentMessages: Record<string, Array<{ role: string; content?: string; toolName?: string; status?: string; result?: string }>>;
+  workspaceAgentIds: Set<string>;
+}
+
+function ResultsWindow({ winId, layout, zIndex, onFocus, onClose, receptionistMsgs, entries, agentMessages, workspaceAgentIds }: ResultsWindowProps) {
+  const [activeTab, setActiveTab] = useState<'preview' | 'summary'>('preview');
+
+  // Gather ALL text from agents and scratchpad to extract code
+  const allAgentTexts = useMemo(() => {
+    const texts: string[] = [];
+    // Scratchpad deliverables
+    for (const entry of entries) {
+      if (entry.content.length > 30) texts.push(stripComposioLinks(entry.content));
+    }
+    // Agent chat messages
+    for (const [agentId, msgs] of Object.entries(agentMessages)) {
+      if (!workspaceAgentIds.has(agentId)) continue;
+      for (const msg of msgs) {
+        if (msg.role === 'agent' && msg.content && msg.content.length > 30) {
+          texts.push(stripComposioLinks(msg.content));
+        }
+      }
+    }
+    return texts;
+  }, [entries, agentMessages, workspaceAgentIds]);
+
+  const livePreviewHtml = useMemo(() => buildLivePreview(allAgentTexts), [allAgentTexts]);
+
+  const summaryContent = useMemo(() => {
+    if (receptionistMsgs.length === 0) return '';
+    return stripComposioLinks(receptionistMsgs[receptionistMsgs.length - 1].content);
+  }, [receptionistMsgs]);
+
+  const deliverables = useMemo(
+    () => entries.filter(e => e.content.length > 50 && !e.content.startsWith('working on it')),
+    [entries],
+  );
+
+  // Default to preview if we have code, otherwise summary
+  useEffect(() => {
+    if (livePreviewHtml) setActiveTab('preview');
+    else setActiveTab('summary');
+  }, [livePreviewHtml]);
+
+  return (
+    <DesktopWindow
+      title="Final Results"
+      icon={<span className="text-xs">&#127942;</span>}
+      style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height, zIndex }}
+      onFocus={onFocus}
+      onClose={onClose}
+      statusColor="#66bb6a"
+      statusText="Complete"
+      animDelay={0}
+    >
+      <div className="flex flex-col h-full">
+        {/* Tab bar */}
+        <div className="flex items-center gap-1 px-3 py-1.5 bg-[#f8f7f4] border-b border-black/[0.06] shrink-0">
+          {livePreviewHtml && (
+            <button
+              onClick={() => setActiveTab('preview')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                activeTab === 'preview' ? 'bg-white text-[#333] shadow-sm' : 'text-[#888] hover:text-[#555]'
+              }`}
+            >
+              Live Preview
+            </button>
+          )}
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+              activeTab === 'summary' ? 'bg-white text-[#333] shadow-sm' : 'text-[#888] hover:text-[#555]'
+            }`}
+          >
+            Summary
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          {activeTab === 'preview' && livePreviewHtml ? (
+            <iframe
+              srcDoc={livePreviewHtml}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts"
+              title="Live Preview"
+            />
+          ) : (
+            <div className="p-4 overflow-y-auto h-full space-y-4">
+              <div className="pb-2 border-b border-emerald-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="text-[13px] font-semibold text-emerald-900">Workspace Complete</span>
+                </div>
+              </div>
+
+              {summaryContent && (
+                <div className="prose prose-sm max-w-none text-[#333] text-[12px] leading-relaxed">
+                  <Markdown content={summaryContent} />
+                </div>
+              )}
+
+              {deliverables.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-[11px] font-semibold text-[#666] uppercase tracking-wider">Agent Deliverables</div>
+                  {deliverables.map((entry) => (
+                    <div key={entry.id} className="p-3 rounded-lg bg-[#f9f8f5] border border-black/[0.04]">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.authorColor }} />
+                        <span className="text-[11px] font-semibold text-[#444]">{entry.authorName}</span>
+                      </div>
+                      <div className="prose prose-sm max-w-none text-[#444] text-[11px] leading-relaxed">
+                        <Markdown content={stripComposioLinks(entry.content)} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!summaryContent && deliverables.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <div className="flex gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-300 animate-bounce [animation-delay:0ms]" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-300 animate-bounce [animation-delay:100ms]" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-300 animate-bounce [animation-delay:200ms]" />
+                  </div>
+                  <span className="text-[12px] text-[#999]">Compiling results...</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </DesktopWindow>
   );
 }
 
@@ -461,6 +749,104 @@ interface OpenWindow {
   id: string;
   agentId: string;
   zIndex: number;
+  minimized?: boolean;
+}
+
+/* ─── Research Browser Window — shows live URLs agents visit ─── */
+
+interface BrowserTab {
+  id: string;
+  url: string;
+  title: string;
+  agentName: string;
+}
+
+function BrowserWindow({
+  tabs,
+  style,
+  onFocus,
+  onClose,
+  animDelay,
+}: {
+  tabs: BrowserTab[];
+  style: React.CSSProperties;
+  onFocus: () => void;
+  onClose: () => void;
+  animDelay?: number;
+}) {
+  const [activeTabId, setActiveTabId] = useState(tabs[0]?.id ?? '');
+  const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0];
+
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.find(t => t.id === activeTabId)) {
+      setActiveTabId(tabs[tabs.length - 1].id);
+    }
+  }, [tabs, activeTabId]);
+
+  return (
+    <DesktopWindow
+      title="Research Browser"
+      icon={<span className="text-xs">&#127760;</span>}
+      style={style}
+      onFocus={onFocus}
+      onClose={onClose}
+      animDelay={animDelay}
+    >
+      <div className="flex flex-col h-full">
+        {/* Tab bar */}
+        <div className="flex items-center gap-0.5 px-2 py-1 bg-[#e8e6e1] border-b border-black/[0.06] overflow-x-auto shrink-0">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] whitespace-nowrap transition-colors shrink-0 ${
+                activeTabId === tab.id
+                  ? 'bg-white text-[#333] shadow-sm'
+                  : 'text-[#888] hover:bg-white/50'
+              }`}
+            >
+              <span className="font-medium truncate max-w-[100px]">{tab.agentName}</span>
+              <span className="text-[8px] text-[#bbb]">{tab.title.slice(0, 20)}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Address bar */}
+        {activeTab && (
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-[#f3f2ee] border-b border-black/[0.04] shrink-0">
+            <div className="flex items-center gap-1 text-[#bbb]">
+              <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 8h12M2 8l4-4M2 8l4 4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M14 8H2M14 8l-4-4M14 8l-4 4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="flex-1 bg-white rounded-md px-2 py-0.5 text-[10px] text-[#555] truncate border border-black/[0.04]">
+              {activeTab.url}
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden bg-white">
+          {activeTab ? (
+            <iframe
+              key={activeTab.id}
+              src={activeTab.url}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              title={activeTab.title}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-[#bbb] text-xs">
+              No pages to display
+            </div>
+          )}
+        </div>
+      </div>
+    </DesktopWindow>
+  );
 }
 
 const STATUS_MAP: Record<string, { text: string; color: string }> = {
@@ -487,6 +873,81 @@ export function DesktopOS() {
   const [windows, setWindows] = useState<OpenWindow[]>([]);
   const [topZ, setTopZ] = useState(10);
 
+  // Track URLs from tool results for the Research Browser
+  const [browserTabs, setBrowserTabs] = useState<BrowserTab[]>([]);
+  const seenUrls = useRef(new Set<string>());
+  useEffect(() => {
+    const urlEvents = allEvents.filter(
+      e => e.type === 'tool' && e.toolStatus === 'completed' && e.toolResult
+    );
+    const newTabs: BrowserTab[] = [];
+    for (const evt of urlEvents) {
+      if (!evt.toolResult) continue;
+      // Extract URLs from tool results
+      const urlMatch = evt.toolResult.match(/https?:\/\/[^\s"'<>)\]]+/g);
+      if (!urlMatch) continue;
+      for (const url of urlMatch) {
+        // Skip non-embeddable URLs
+        if (
+          url.includes('connect.composio.dev') ||
+          url.includes('/api/') ||
+          url.includes('googleapis.com') ||
+          url.includes('googleusercontent.com') ||
+          url.includes('gstatic.com') ||
+          url.includes('google.com/search') ||
+          url.includes('accounts.google.com') ||
+          /\.(jpg|jpeg|png|gif|webp|svg|ico)(\?|$)/i.test(url)
+        ) continue;
+        // Skip already-seen URLs
+        if (seenUrls.current.has(url)) continue;
+        seenUrls.current.add(url);
+        const agentName = evt.agentName || 'Agent';
+        const toolLabel = evt.toolName ? formatToolName(evt.toolName) : 'Browse';
+        let hostname = url;
+        try { hostname = new URL(url).hostname; } catch { /* keep full url */ }
+        newTabs.push({
+          id: `bt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          url,
+          title: `${toolLabel}: ${hostname}`,
+          agentName,
+        });
+      }
+    }
+    if (newTabs.length > 0) {
+      setBrowserTabs(prev => [...prev, ...newTabs]);
+      // Auto-open browser window if not already open
+      setWindows(prev => {
+        if (prev.some(w => w.agentId === '__browser__')) return prev;
+        const baseZ = prev.reduce((max, w) => Math.max(max, w.zIndex), 10);
+        return [...prev, { id: 'win-browser', agentId: '__browser__', zIndex: baseZ + 1 }];
+      });
+    }
+  }, [allEvents]);
+
+  // Also add embed tabs to the browser
+  useEffect(() => {
+    if (embeds.length === 0) return;
+    const newTabs: BrowserTab[] = [];
+    for (const embed of embeds) {
+      if (seenUrls.current.has(embed.url)) continue;
+      seenUrls.current.add(embed.url);
+      newTabs.push({
+        id: `embed-${embed.id}`,
+        url: embed.url,
+        title: embed.title,
+        agentName: embed.agentName,
+      });
+    }
+    if (newTabs.length > 0) {
+      setBrowserTabs(prev => [...prev, ...newTabs]);
+      setWindows(prev => {
+        if (prev.some(w => w.agentId === '__browser__')) return prev;
+        const baseZ = prev.reduce((max, w) => Math.max(max, w.zIndex), 10);
+        return [...prev, { id: 'win-browser', agentId: '__browser__', zIndex: baseZ + 1 }];
+      });
+    }
+  }, [embeds]);
+
   // Auto-open windows for new agents (dedup inside updater to avoid React strict-mode doubles)
   useEffect(() => {
     if (workspaceAgents.length === 0) return;
@@ -508,13 +969,18 @@ export function DesktopOS() {
     });
   }, [workspaceAgents.length]);
 
-  // Auto-open a "Final Results" window when the receptionist posts a summary
-  const lastReceptionistMsg = receptionistMsgs.filter(m => m.role === 'agent').pop();
+  // Auto-open a "Final Results" window when the receptionist posts a workspace summary
+  const receptionistAgentMsgs = useMemo(
+    () => receptionistMsgs.filter(m => m.role === 'agent'),
+    [receptionistMsgs],
+  );
   const [resultsShown, setResultsShown] = useState(false);
+  const lastResultsMsgCount = useRef(0);
   useEffect(() => {
-    if (!lastReceptionistMsg || resultsShown) return;
-    const allDone = workspaceAgents.length > 0 && workspaceAgents.every(a => a.status === 'done' || a.status === 'idle');
-    if (!allDone) return;
+    // Trigger when a NEW receptionist message arrives after workspace agents exist
+    if (receptionistAgentMsgs.length === 0 || workspaceAgents.length === 0) return;
+    if (receptionistAgentMsgs.length <= lastResultsMsgCount.current) return;
+    lastResultsMsgCount.current = receptionistAgentMsgs.length;
 
     setResultsShown(true);
     setWindows((prev) => {
@@ -522,7 +988,22 @@ export function DesktopOS() {
       const baseZ = prev.reduce((max, w) => Math.max(max, w.zIndex), 10);
       return [...prev, { id: 'win-results', agentId: '__results__', zIndex: baseZ + 1 }];
     });
-  }, [lastReceptionistMsg, workspaceAgents, resultsShown]);
+  }, [receptionistAgentMsgs.length, workspaceAgents.length]);
+
+  // Don't minimize individual agents while work is in progress.
+  // Only bulk-minimize when workspace is fully complete.
+  const workspaceComplete = useMemo(
+    () => workspaceAgents.length > 0 && workspaceAgents.every(a => a.status === 'done' || a.status === 'idle'),
+    [workspaceAgents],
+  );
+  const didBulkClose = useRef(false);
+  useEffect(() => {
+    if (!workspaceComplete || didBulkClose.current) return;
+    didBulkClose.current = true;
+    setWindows(prev => prev.map(w =>
+      (w.agentId === '__results__' || w.agentId === '__browser__') ? { ...w, minimized: false } : { ...w, minimized: true }
+    ));
+  }, [workspaceComplete]);
 
   const focusWindow = useCallback((id: string) => {
     setTopZ((z) => {
@@ -536,13 +1017,14 @@ export function DesktopOS() {
     setWindows((prev) => prev.filter((w) => w.id !== id));
   }, []);
 
-  // Auto-tile layout — grid that fills the available space
+  // Auto-tile layout — grid for visible (non-minimized) windows
+  const visibleWindows = useMemo(() => windows.filter(w => !w.minimized), [windows]);
   const tileLayout = useMemo(() => {
-    const count = windows.length;
+    const count = visibleWindows.length;
     if (count === 0) return [];
 
     const topBarH = 44;
-    const promptBarH = 72;
+    const promptBarH = 16; // chat is now at bottom-right, minimal space needed
     const iconColW = 80;
     const padding = 10;
     const screenW = typeof window !== 'undefined' ? window.innerWidth : 1280;
@@ -561,7 +1043,7 @@ export function DesktopOS() {
     const cellW = (availW - gap * (cols - 1)) / cols;
     const cellH = (availH - gap * (rows - 1)) / rows;
 
-    return windows.map((_, i) => {
+    return visibleWindows.map((_, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       return {
@@ -571,7 +1053,7 @@ export function DesktopOS() {
         height: cellH,
       };
     });
-  }, [windows.length]);
+  }, [visibleWindows.length]);
 
   // Per-agent tech stack from tool events
   const agentTechMap = useMemo(() => {
@@ -589,14 +1071,18 @@ export function DesktopOS() {
   }, [allEvents]);
 
   const handleIconClick = useCallback((agentId: string) => {
-    const existing = windows.find((w) => w.agentId === agentId);
-    if (existing) {
-      focusWindow(existing.id);
-    } else {
-      setWindows((prev) => [...prev, { id: `win-${agentId}`, agentId, zIndex: topZ + 1 }]);
-      setTopZ((z) => z + 1);
-    }
-  }, [windows, topZ, focusWindow]);
+    setWindows(prev => {
+      const existing = prev.find(w => w.agentId === agentId);
+      if (existing) {
+        // Un-minimize and focus
+        return prev.map(w =>
+          w.agentId === agentId ? { ...w, minimized: false, zIndex: topZ + 1 } : w
+        );
+      }
+      return [...prev, { id: `win-${agentId}`, agentId, zIndex: topZ + 1 }];
+    });
+    setTopZ(z => z + 1);
+  }, [topZ]);
 
   return (
     <div className="absolute inset-0 top-11 z-10">
@@ -688,43 +1174,41 @@ export function DesktopOS() {
             <span className="text-[9px] text-[#4a4a4a] font-medium">Notes</span>
           </button>
         )}
+
+        {browserTabs.length > 0 && (
+          <button
+            onClick={() => handleIconClick('__browser__')}
+            className="flex flex-col items-center gap-0.5 group cursor-pointer mt-1"
+            style={{ animation: 'desktopIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.35s both' }}
+          >
+            <div className="w-11 h-11 rounded-[11px] bg-blue-50 border border-blue-200/60 flex items-center justify-center text-base shadow-sm transition-transform duration-200 group-hover:scale-110">
+              <span>&#127760;</span>
+            </div>
+            <span className="text-[9px] text-[#4a4a4a] font-medium">Browser</span>
+          </button>
+        )}
       </div>
 
       {/* Tiled agent windows */}
-      {windows.map((win, i) => {
+      {visibleWindows.map((win, i) => {
         const layout = tileLayout[i];
         if (!layout) return null;
 
-        // Results window — final receptionist summary
+        // Results window — renders the actual final product
         if (win.agentId === '__results__') {
-          const summaryMsgs = receptionistMsgs.filter(m => m.role === 'agent');
-          const summaryContent = summaryMsgs.length > 0 ? summaryMsgs[summaryMsgs.length - 1].content : '';
           return (
-            <DesktopWindow
+            <ResultsWindow
               key={win.id}
-              title="Final Results"
-              icon={<span className="text-xs">&#127942;</span>}
-              style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height, zIndex: win.zIndex }}
+              winId={win.id}
+              layout={layout}
+              zIndex={win.zIndex}
               onFocus={() => focusWindow(win.id)}
               onClose={() => closeWindow(win.id)}
-              statusColor="#66bb6a"
-              statusText="Complete"
-              animDelay={0}
-            >
-              <div className="p-4 overflow-y-auto h-full">
-                <div className="mb-3 pb-2 border-b border-emerald-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <svg className="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <span className="text-[13px] font-semibold text-emerald-900">Workspace Complete</span>
-                  </div>
-                </div>
-                <Markdown>{summaryContent}</Markdown>
-              </div>
-            </DesktopWindow>
+              receptionistMsgs={receptionistAgentMsgs}
+              entries={entries}
+              agentMessages={chatMessages}
+              workspaceAgentIds={workspaceAgentIds}
+            />
           );
         }
 
@@ -755,9 +1239,22 @@ export function DesktopOS() {
           );
         }
 
+        // Browser window
+        if (win.agentId === '__browser__') {
+          return (
+            <BrowserWindow
+              key={win.id}
+              tabs={browserTabs}
+              style={{ left: layout.left, top: layout.top, width: layout.width, height: layout.height, zIndex: win.zIndex }}
+              onFocus={() => focusWindow(win.id)}
+              onClose={() => closeWindow(win.id)}
+              animDelay={0}
+            />
+          );
+        }
+
         const agent = agents.find((a) => a.id === win.agentId);
         if (!agent) return null;
-        const agentEmbed = embeds.find((e) => e.agentId === win.agentId);
         const status = STATUS_MAP[agent.status] ?? STATUS_MAP.idle;
         const tech = agentTechMap.get(win.agentId);
         const techArray = tech ? Array.from(tech.values()) : [];
@@ -780,16 +1277,7 @@ export function DesktopOS() {
             techStack={techArray}
             animDelay={i * 100}
           >
-            {agentEmbed ? (
-              <iframe
-                src={agentEmbed.url}
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                title={agentEmbed.title}
-              />
-            ) : (
-              <AgentWindowContent agentId={win.agentId} agentName={agent.name} />
-            )}
+            <AgentWindowContent agentId={win.agentId} agentName={agent.name} />
           </DesktopWindow>
         );
       })}
@@ -800,8 +1288,8 @@ export function DesktopOS() {
       {/* Thinking bubble */}
       <ThinkingBubble />
 
-      {/* Prompt bar */}
-      <DesktopPromptBar />
+      {/* Chat panel with history */}
+      <ChatPanel />
     </div>
   );
 }

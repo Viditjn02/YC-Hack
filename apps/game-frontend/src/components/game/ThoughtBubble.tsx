@@ -1,4 +1,4 @@
-/** Self-contained thought bubble that manages its own timing via useFrame. */
+/** Thought bubble: shows idle thoughts when idle, live tool activity when busy. */
 'use client';
 
 import { useRef } from 'react';
@@ -7,12 +7,24 @@ import { Billboard, Text, RoundedBox } from '@react-three/drei';
 import { MathUtils } from 'three';
 import type { Group, MeshBasicMaterial } from 'three';
 import { THOUGHT_BUBBLE, agentThoughts, defaultThoughts } from '@/data/agentThoughts';
+import { useActivityStore } from '@/stores/activityStore';
 
 type Phase = 'hidden' | 'fadeIn' | 'visible' | 'fadeOut';
 
 interface ThoughtBubbleProps {
   agentId: string;
   isBusy: boolean;
+}
+
+function formatToolName(raw: string): string {
+  const parts = raw.split('_');
+  if (parts.length > 1) {
+    return parts
+      .slice(1)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return raw.replace(/([A-Z])/g, ' $1').trim();
 }
 
 export function ThoughtBubble({ agentId, isBusy }: ThoughtBubbleProps) {
@@ -26,21 +38,52 @@ export function ThoughtBubble({ agentId, isBusy }: ThoughtBubbleProps) {
     timer: randomInterval(),
     text: '',
     opacity: 0,
+    lastBusyText: '',
+    wasBusy: false,
   });
 
   useFrame((_, delta) => {
-    if (thoughts.length === 0) return;
     const s = stateRef.current;
     const group = groupRef.current;
     if (!group) return;
 
-    // Suppress during conversation
     if (isBusy) {
-      if (s.phase !== 'hidden') {
-        s.phase = 'hidden';
-        s.opacity = 0;
-        s.timer = randomInterval();
+      const events = useActivityStore.getState().events;
+      const latestTool = events
+        .filter((e) => e.agentId === agentId && e.type === 'tool' && e.toolStatus === 'started')
+        .at(-1);
+
+      const busyText = latestTool
+        ? `${formatToolName(latestTool.toolName!)}...`
+        : 'Working...';
+
+      if (busyText !== s.lastBusyText || !s.wasBusy) {
+        s.lastBusyText = busyText;
+        s.text = busyText;
+        s.phase = 'visible';
+        s.opacity = 1;
+        s.timer = 999;
+        s.wasBusy = true;
+        if (textRef.current) {
+          (textRef.current as unknown as { text: string }).text = s.text;
+        }
       }
+
+      group.visible = true;
+      if (bgRef.current) bgRef.current.opacity = 0.92;
+      if (tailRef.current) tailRef.current.opacity = 0.92;
+      if (textRef.current) textRef.current.fillOpacity = 1;
+      return;
+    }
+
+    // Transitioning from busy to idle: fade out
+    if (s.wasBusy) {
+      s.wasBusy = false;
+      s.phase = 'fadeOut';
+      s.timer = THOUGHT_BUBBLE.fadeDuration;
+    }
+
+    if (thoughts.length === 0 && s.phase === 'hidden') {
       group.visible = false;
       return;
     }
@@ -49,12 +92,11 @@ export function ThoughtBubble({ agentId, isBusy }: ThoughtBubbleProps) {
       case 'hidden':
         s.timer -= delta;
         group.visible = false;
-        if (s.timer <= 0) {
+        if (s.timer <= 0 && thoughts.length > 0) {
           s.text = thoughts[Math.floor(Math.random() * thoughts.length)];
           s.phase = 'fadeIn';
           s.timer = THOUGHT_BUBBLE.fadeDuration;
           s.opacity = 0;
-          // Update the text content
           if (textRef.current) {
             (textRef.current as unknown as { text: string }).text = s.text;
           }
@@ -100,34 +142,29 @@ export function ThoughtBubble({ agentId, isBusy }: ThoughtBubbleProps) {
         break;
     }
 
-    // Apply opacity to materials
     if (bgRef.current) bgRef.current.opacity = s.opacity * 0.92;
     if (tailRef.current) tailRef.current.opacity = s.opacity * 0.92;
     if (textRef.current) textRef.current.fillOpacity = s.opacity;
   });
 
-  if (thoughts.length === 0) return null;
-
   return (
     <group ref={groupRef} visible={false}>
       <Billboard position={[0, 3.2, 0]}>
         <group>
-          {/* Background box */}
           <RoundedBox args={[2.6, 0.5, 0.05]} radius={0.1} smoothness={4}>
             <meshBasicMaterial
               ref={bgRef}
-              color="#ffffff"
+              color={isBusy ? '#1e1e2e' : '#ffffff'}
               transparent
               opacity={0}
             />
           </RoundedBox>
 
-          {/* Thought text */}
           <Text
             ref={textRef}
             position={[0, 0, 0.03]}
             fontSize={0.16}
-            color="#333333"
+            color={isBusy ? '#89b4fa' : '#333333'}
             anchorX="center"
             anchorY="middle"
             maxWidth={2.3}
@@ -136,12 +173,11 @@ export function ThoughtBubble({ agentId, isBusy }: ThoughtBubbleProps) {
             {''}
           </Text>
 
-          {/* Tail triangle pointing down */}
           <mesh position={[0, -0.32, 0]} rotation={[0, 0, Math.PI]}>
             <coneGeometry args={[0.1, 0.15, 3]} />
             <meshBasicMaterial
               ref={tailRef}
-              color="#ffffff"
+              color={isBusy ? '#1e1e2e' : '#ffffff'}
               transparent
               opacity={0}
             />

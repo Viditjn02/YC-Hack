@@ -70,16 +70,33 @@ export async function runTask(task: string): Promise<BrowserTaskResult> {
   const created = await apiRequest<TaskCreatedResponse>('POST', '/tasks', { task });
   log.info(`[browser-use] Task created: taskId=${created.id} sessionId=${created.sessionId}`);
 
-  let liveUrl: string | undefined;
-  try {
-    const session = await apiRequest<SessionResponse>('GET', `/sessions/${created.sessionId}`);
-    liveUrl = session.liveUrl ?? undefined;
-    log.info(`[browser-use] Session live URL: ${liveUrl ?? 'none'}`);
-  } catch (err) {
-    log.warn(`[browser-use] Failed to fetch session for live URL: ${err instanceof Error ? err.message : err}`);
-  }
+  const liveUrl = await fetchLiveUrl(created.sessionId);
 
   return { taskId: created.id, sessionId: created.sessionId, liveUrl };
+}
+
+/**
+ * Poll the session endpoint until `liveUrl` is available.
+ * The browser-use Cloud API needs a few seconds to provision the browser.
+ */
+export async function fetchLiveUrl(sessionId: string, maxAttempts = 5, intervalMs = 1500): Promise<string | undefined> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const session = await apiRequest<SessionResponse>('GET', `/sessions/${sessionId}`);
+      if (session.liveUrl) {
+        log.info(`[browser-use] Session live URL (attempt ${attempt}): ${session.liveUrl}`);
+        return session.liveUrl;
+      }
+      log.debug(`[browser-use] liveUrl not ready yet (attempt ${attempt}/${maxAttempts})`);
+    } catch (err) {
+      log.warn(`[browser-use] Session fetch attempt ${attempt} failed: ${err instanceof Error ? err.message : err}`);
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  }
+  log.warn(`[browser-use] liveUrl not available after ${maxAttempts} attempts`);
+  return undefined;
 }
 
 export async function getTaskStatus(taskId: string): Promise<TaskStatusResponse> {

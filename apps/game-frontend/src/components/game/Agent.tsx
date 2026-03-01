@@ -7,6 +7,7 @@ import { Billboard, Text, Sparkles } from '@react-three/drei';
 import { CharacterModel } from './CharacterModel';
 import { ThoughtBubble } from './ThoughtBubble';
 import { SpeechBubble } from './SpeechBubble';
+import { BrowsingIndicator } from './BrowsingIndicator';
 import { useChatStore } from '@/stores/chatStore';
 import { useWorldStore } from '@/stores/worldStore';
 import { useFrame } from '@react-three/fiber';
@@ -138,6 +139,9 @@ export function Agent({ agent }: AgentProps) {
 
         {/* Speech bubble (streamed agent response) */}
         <SpeechBubble agentId={agent.id} />
+
+        {/* Hologram indicator when agent is browsing the web */}
+        <BrowsingIndicator agentId={agent.id} />
 
         {/* Link alert — pulsing blue rings + yellow sparkles */}
         {hasLink && <LinkAlert />}

@@ -7,7 +7,6 @@ import { WelcomeDashboard } from './WelcomeDashboard';
 import { ChatPanel } from '../ui/ChatPanel';
 import { EmbedPanel } from '../ui/EmbedPanel';
 import { ProductCanvas } from '../ui/ProductCanvas';
-import { BrowserUseOverlay } from '../ui/BrowserUseOverlay';
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { WorkspaceBar } from '../ui/WorkspaceBar';
 import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
@@ -38,7 +37,6 @@ export function ImagineMode({ user }: Props) {
       {isCanvasMode && <WelcomeDashboard />}
 
       {/* Original BossRoom overlays for full functionality */}
-      <BrowserUseOverlay />
       <ChatPanel />
       <EmbedPanel />
       <ProductCanvas />

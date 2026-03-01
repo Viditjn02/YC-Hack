@@ -15,7 +15,6 @@ import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { PunchHint } from './PunchHint';
 import { ViewHint } from './ViewHint';
 
-import { BrowserUseOverlay } from '../ui/BrowserUseOverlay';
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
@@ -41,7 +40,6 @@ export function Game({ user }: GameProps) {
         </Suspense>
       </Canvas>
       <HUD />
-      <BrowserUseOverlay />
       <ChatPanel />
       <EmbedPanel />
       <ProductCanvas />

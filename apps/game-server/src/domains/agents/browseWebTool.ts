@@ -7,7 +7,7 @@ import type { AgentRepository } from './repository.js';
 import type { PlayerService } from '../players/service.js';
 
 const POLL_INTERVAL_MS = 2_000;
-const QUICK_TIMEOUT_MS = 10_000;
+// const QUICK_TIMEOUT_MS = 10_000;
 
 interface BrowseWebToolDeps {
   agentId: string;
@@ -57,6 +57,29 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
           agentRepo.setBrowserTask(agentId, result.taskId);
 
           sendBrowserStatus(true, result.liveUrl);
+
+          // If liveUrl wasn't ready yet, keep trying in the background
+          if (!result.liveUrl && result.sessionId) {
+            browserUse.fetchLiveUrl(result.sessionId, 8, 2000).then((url) => {
+              if (url) {
+                sendBrowserStatus(true, url);
+                playerService.send(ws, {
+                  type: 'workspace:embedPanel',
+                  payload: {
+                    workspaceId,
+                    embed: {
+                      id: `browser-${result.taskId}`,
+                      url,
+                      title: `${agentName}'s Browser`,
+                      type: 'other',
+                      agentId,
+                      agentName,
+                    },
+                  },
+                });
+              }
+            });
+          }
 
           if (result.liveUrl) {
             playerService.send(ws, {
@@ -127,13 +150,13 @@ function pollBrowserTask(
           return;
         }
 
-        if (Date.now() - startTime > QUICK_TIMEOUT_MS) {
-          log.warn(`[browse_web] ${agentName} task ${taskId} timed out after ${QUICK_TIMEOUT_MS / 1000}s — stopping`);
-          browserUse.stopTask(taskId).catch(() => {});
-          agentRepo.clearBrowserTask(agentId);
-          resolve(`Browser task is taking too long (>${QUICK_TIMEOUT_MS / 1000}s). Use your Composio search tools (COMPOSIO_SEARCH_TOOLS, COMPOSIO_MULTI_EXECUTE_TOOL) as a fallback to complete this research task instead.`);
-          return;
-        }
+        // if (Date.now() - startTime > QUICK_TIMEOUT_MS) {
+        //   log.warn(`[browse_web] ${agentName} task ${taskId} timed out after ${QUICK_TIMEOUT_MS / 1000}s — stopping`);
+        //   browserUse.stopTask(taskId).catch(() => {});
+        //   agentRepo.clearBrowserTask(agentId);
+        //   resolve(`Browser task is taking too long (>${QUICK_TIMEOUT_MS / 1000}s). Use your Composio search tools (COMPOSIO_SEARCH_TOOLS, COMPOSIO_MULTI_EXECUTE_TOOL) as a fallback to complete this research task instead.`);
+        //   return;
+        // }
 
         setTimeout(poll, POLL_INTERVAL_MS);
       } catch (err) {

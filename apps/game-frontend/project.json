@@ -1,0 +1,17 @@
+{
+  "name": "@org/game-frontend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/game-frontend",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "dev": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "next dev --port 3000",
+        "cwd": "apps/game-frontend"
+      }
+    }
+  }
+}

@@ -1,0 +1,79 @@
+# ENVIRONMENT
+**/.env
+**/.env.local
+**/.env.*.local
+
+!.env.example
+!**/.env.example
+
+# OS FILES
+.DS_Store
+Thumbs.db
+
+# LOGS
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+
+# EDITORS / IDE
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+*~
+
+# NODE / JAVASCRIPT / TYPESCRIPT
+node_modules/
+**/node_modules/
+
+dist/
+build/
+**/dist/
+**/build/
+**/dist-ssr/
+
+coverage/
+**/coverage/
+
+*.tsbuildinfo
+.eslintcache
+
+package-lock.json
+**/package-lock.json
+
+# Yarn / PnP / Turbo
+.pnp
+.pnp.js
+.yarn/
+.turbo/
+**/.turbo/
+
+# NEXT.JS (for all subprojects)
+**/.next/
+**/out/
+**/next-env.d.ts
+
+# GENERAL FRONTEND
+# SSL certificates
+vic-agent/apps/web/.certs/
+vic-agent/apps/web/*.pem
+*.pem
+
+# CLAUDE / MISC
+settings.local.json
+**/settings.local.json
+
+# LANGUAGEGRAPH / CREDENTIALS / PROJECT SECRETS
+**/.langgraph_api
+**/credentials.json
+**/secrets.json

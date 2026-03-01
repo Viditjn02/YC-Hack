@@ -1,0 +1,136 @@
+{
+  "name": "@org/game-server",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/game-server/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "apps/game-server/dist",
+        "format": [
+          "esm"
+        ],
+        "bundle": false,
+        "main": "apps/game-server/src/main.ts",
+        "tsConfig": "apps/game-server/tsconfig.app.json",
+        "assets": [
+          "apps/game-server/src/assets"
+        ],
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "prune-lockfile": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": true,
+      "executor": "@nx/js:prune-lockfile",
+      "outputs": [
+        "{workspaceRoot}/apps/game-server/dist/package.json",
+        "{workspaceRoot}/apps/game-server/dist/package-lock.json"
+      ],
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "copy-workspace-modules": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": true,
+      "outputs": [
+        "{workspaceRoot}/apps/game-server/dist/workspace_modules"
+      ],
+      "executor": "@nx/js:copy-workspace-modules",
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "prune": {
+      "dependsOn": [
+        "prune-lockfile",
+        "copy-workspace-modules"
+      ],
+      "executor": "nx:noop"
+    },
+    "dev": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": [
+        "build"
+      ],
+      "options": {
+        "buildTarget": "@org/game-server:build:development",
+        "runBuildTargetDependencies": false
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": [
+        "build"
+      ],
+      "options": {
+        "buildTarget": "@org/game-server:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "@org/game-server:build:development"
+        },
+        "production": {
+          "buildTarget": "@org/game-server:build:production"
+        }
+      }
+    },
+    "db:generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx drizzle-kit generate --config=apps/game-server/src/db/drizzle.config.ts"
+      }
+    },
+    "db:migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx drizzle-kit migrate --config=apps/game-server/src/db/drizzle.config.ts"
+      }
+    },
+    "db:push": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx drizzle-kit push --config=apps/game-server/src/db/drizzle.config.ts"
+      }
+    },
+    "db:studio": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx drizzle-kit studio --config=apps/game-server/src/db/drizzle.config.ts"
+      }
+    }
+  },
+  "tags": []
+}

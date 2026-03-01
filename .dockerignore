@@ -1,0 +1,14 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+terraform
+tmp
+*.md
+.nx
+.claude
+.context
+apps/game-frontend/out
+apps/game-frontend/.next
+apps/game-server/dist

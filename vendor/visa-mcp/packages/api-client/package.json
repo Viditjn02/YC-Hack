@@ -1,0 +1,39 @@
+{
+  "name": "@visa/api-client",
+  "version": "1.0.0",
+  "description": "VIC API client for direct VIC API calls with X-Pay authentication and MLE encryption",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint . --ext .ts,.js,.mjs",
+    "lint:fix": "eslint . --ext .ts,.js,.mjs --fix",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "visa",
+    "vic",
+    "vacp",
+    "api-client",
+    "x-pay",
+    "mle"
+  ],
+  "dependencies": {
+    "node-jose": "^2.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node-jose": "^1.1.13"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

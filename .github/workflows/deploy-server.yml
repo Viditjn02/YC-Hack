@@ -1,0 +1,59 @@
+name: Deploy Game Server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/game-server/**'
+      - 'libs/shared-types/**'
+      - 'libs/shared-utils/**'
+      - 'package-lock.json'
+      - 'apps/game-server/Dockerfile'
+      - 'cloudbuild.yaml'
+
+env:
+  PROJECT_ID: treehacks-2026-487500
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev
+  REPO: bossroom
+  IMAGE: game-server
+  SERVICE: bossroom-game-server
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Build and push image
+        run: |
+          docker build \
+            -f apps/game-server/Dockerfile \
+            -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:latest \
+            .
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --quiet

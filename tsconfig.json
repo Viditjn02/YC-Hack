@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/game-frontend"
+    },
+    {
+      "path": "./apps/game-server"
+    },
+    {
+      "path": "./libs/shared-types"
+    },
+    {
+      "path": "./libs/shared-utils"
+    }
+  ]
+}

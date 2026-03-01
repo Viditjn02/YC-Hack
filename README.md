@@ -58,41 +58,53 @@ The office sits on **procedurally generated terrain** using simplex noise with M
 
 ## How we built it
 
-This is not a simple stack. We built a **real-time game engine**, a **multi-agent AI orchestration system**, **dual spatial voice pipelines**, a **commerce platform**, and **production cloud infrastructure** — and wired them all together over WebSocket in 36 hours.
+Five systems that each would be a full hackathon project on their own — a real-time 3D game engine, a self-assembling agent swarm, dual spatial voice pipelines, an in-world commerce platform, and production cloud infra — all multiplexed over a **single persistent WebSocket** connection. Here's exactly how.
 
-### 3D Game Engine (Frontend)
+### The Agent Swarm (Core Architecture)
 
-React Three Fiber + drei + Rapier physics, running inside Next.js 16 with React 19, TypeScript, and Tailwind v4. We built a Roblox-style third-person camera with physics-based character controls using ecctrl. 13 Kenney.nl character models with idle/walk/sprint/jump animations. Procedurally generated chunked terrain using simplex noise with Minecraft-style quantized heights, vertex colors, LOD (near chunks at full resolution, far chunks at 8-cell), and small decorations (flowers, grass tufts). Agent visual states (idle, listening, thinking, working, done, error) are driven by 14 Zustand stores synchronized with the server over WebSocket. HTML speech bubbles positioned in 3D space above agents. Bloom and vignette post-processing make status orbs and neon strips glow. shadcn/ui components for chat panels, product cards, scratchpad feed, and workspace management. 46 distinct WebSocket message types in a fully typed protocol with Zod validation on both ends.
+This is the thing that makes BossBot different from every other multi-agent demo you've seen.
 
-### Multi-Agent AI Orchestration (Backend)
+Most "multi-agent" systems are hardcoded graphs. You define the agents, define the edges, run the graph. BossBot doesn't work that way. When you describe a task, the **Receptionist LLM calls a `setup_workspace` tool mid-stream**. That tool call carries a JSON payload with 3–12 agent definitions the model invented on the spot: names, personalities, hex colors, zone coordinates, system prompts, skill lists, and a delegation graph. The server parses it, runs a bulk insert into PostgreSQL via Drizzle ORM, registers each agent in memory, and broadcasts a `workspace:build` event to every connected client — all before the Receptionist finishes its response stream. The frontend receives the event and animates each agent materializing at their desk in the 3D world in sequence.
 
-A Node.js WebSocket game server with a domain-driven architecture (7 modules: agents, conversations, players, scratchpad, skills, users, workspaces). The Receptionist agent dynamically creates 3-12 specialized agents per workspace using a `setup_workspace` tool — the LLM decides the team composition, skill definitions, and leadership structure. Each agent gets a compiled system prompt, its own conversation history, access to Composio OAuth tools scoped per-user, and the ability to create new skills for itself at runtime.
+The lead agent immediately begins streaming its first delegation. Workers receive `delegate_task` calls, spin up their own `streamText` sessions with `stopWhen: stepCountIs(25)` multi-step tool calling, and post results to a **Supermemory**-backed scratchpad that persists across sessions — so when you return to a workspace tomorrow, every agent remembers exactly where the work left off. The lead collects all worker outputs via `finish_task` and the Receptionist synthesizes a final summary. The entire swarm spawned from one sentence.
 
-AI calls use the **Vercel AI SDK** (`streamText` with multi-step tool calling, `stopWhen: stepCountIs(25)`) routed through **Vercel AI Gateway** — a unified proxy that lets us swap between Gemini, Claude, and GPT-4o per agent with a single API key. Real-world actions (Gmail, Calendar, Linear, Stripe, SerpAPI) flow through **Composio** OAuth integrations giving each user scoped access to their own accounts. The lead agent delegates tasks to workers via `delegate_task`, workers post to a shared scratchpad, and when the lead calls `finish_task` the Receptionist compiles a final summary from all agent outputs.
+**Vercel AI Gateway** sits in front of every LLM call — a single `createOpenAI`-compatible endpoint that proxies to Gemini 3 Flash, Claude Sonnet, or GPT-4o via BYOK keys in the Vercel dashboard. One `AI_GATEWAY_API_KEY`, zero hardcoded provider credentials, and the ability to route different agents to different models in a single config change. The Vercel AI SDK's `streamText` handles multi-step tool calling with automatic continuation — agents chain tool calls without any manual loop logic.
 
-We also built **MCP (Model Context Protocol)** support — the Shopkeeper connects to **Visa's Intelligent Commerce MCP server** for product search and payment processing. Any external tool server can be plugged in.
+### Real-World Tool Execution via Composio + Browser Use
 
-### Dual Spatial Voice Pipelines
+Agents don't simulate work. They do it.
 
-**Pipeline 1 — Agent voice (STT + TTS):** Client records mic audio, streams it over WebSocket to Deepgram Nova-3 for real-time transcription. The transcript is sent as an `agent:message`. The server generates a voice response via Inworld TTS API and sends base64 MP3 back over WebSocket. The client decodes it and plays it through an **HRTF PannerNode** positioned at the agent's 3D coordinates — the voice literally comes from where the agent is standing in the world.
+**Composio** gives every agent access to OAuth-scoped tool sets, keyed per-user by Firebase UID. When the Email Agent sends a Gmail message, it's using *your* Gmail OAuth token — not a service account. When the Scheduler books a meeting, it creates a real event in *your* Calendar. Composio manages the OAuth handshake, token refresh, and scope isolation. We call `composio.getTools({ apps: ['GMAIL', 'GOOGLECALENDAR', 'LINEAR'] })` and pass the resulting tool definitions directly into the AI SDK — the LLM sees them as native tools.
 
-**Pipeline 2 — Player-to-player proximity voice (WebRTC):** PeerJS establishes P2P audio connections between nearby players. Each remote player's MediaStream is routed through its own HRTF PannerNode positioned at their real-time 3D location — voice fades naturally with distance (inverse rolloff model) and pans spatially. Both pipelines share a **single AudioContext singleton** to avoid browser limitations.
+For research tasks, agents invoke **Browser Use** — a headless browser automation layer that lets agents navigate real websites, extract live information, and return structured results. An agent can be told "research our top 5 competitors' pricing pages" and Browser Use handles the actual browsing: loading pages, scrolling, extracting tables, handling JS-rendered content. This isn't SerpAPI keyword matching. It's a real browser doing real research.
 
-### Commerce (Visa MCP)
+### Spatial Voice — Two Pipelines, One AudioContext
 
-The Shopkeeper agent connects to **Visa's Intelligent Commerce (VIC) MCP server** for product search and discovery. Products are rendered as interactive cards with real images, prices, ratings, and retailer info via a custom `display_products` tool. Purchase flow: user clicks Buy → payment processed through Visa VIC + Composio Stripe as a backup payment rail. Full purchase mode controls (approval vs. autonomous, budget limits) are built into the WebSocket protocol.
+**Pipeline 1 (Agent STT/TTS):** The client opens a WebSocket directly to `wss://api.deepgram.com/v1/listen` with model `nova-3`, streaming raw PCM mic audio in real-time. Deepgram returns transcripts as JSON deltas over the same socket — we forward the final transcript as an `agent:message` to our game server. On the response path, the server calls **MiniMax TTS** (`speech-2.8-hd` model via REST POST to `https://api.minimax.io/v1/t2a_v2`) which returns hex-encoded MP3 audio. We convert it to base64 and send it as an `agent:ttsAudio` WebSocket message. The client decodes the base64 into an `AudioBuffer`, creates a `BufferSourceNode`, routes it through an `HRTF PannerNode` set to the agent's exact Three.js world coordinates, and plays it. The voice comes *from* the agent's position in 3D space.
+
+**Pipeline 2 (Player proximity voice):** PeerJS establishes WebRTC `RTCPeerConnection` between nearby players using Firebase UIDs as peer IDs. Each remote player's `MediaStream` gets routed through its own `HRTF PannerNode` updated every render frame from that player's live position in the world. Voice rolls off with distance using an inverse model — walk closer and it gets louder, walk away and it fades. Both pipelines share a **single `AudioContext` singleton** to avoid the browser's limit on concurrent audio contexts.
+
+### In-World Commerce via Visa Intelligent Commerce MCP
+
+The Shopkeeper agent runs an **MCP (Model Context Protocol) client** connected to Visa's Intelligent Commerce server. MCP is the open standard for wiring external tool servers to LLMs — instead of wrapping an API in a Composio adapter, we speak the MCP wire protocol directly using `@ai-sdk/mcp`. The Visa VIC MCP server exposes tools for product search, price comparison, and payment processing. We call `mcpClient.tools()` and inject them into the agent's tool set alongside its Composio tools.
+
+When you ask for "wireless headphones under $50," the Shopkeeper calls the VIC search tool, gets back real product data (names, prices, images, ratings, retailers), and invokes our custom `display_products` tool — which sends a typed `agent:productCards` WebSocket message to the frontend, which renders interactive cards in the chat panel. Click Buy: the agent calls the VIC purchase tool, Visa processes the payment, and the result comes back as `shop:purchaseResult`. Shopping in a game world, powered by real rails.
+
+### 3D Game Engine
+
+React Three Fiber + drei + Rapier physics inside Next.js 16 / React 19 / Tailwind v4. Physics-based character controller (ecctrl) with a Roblox-style third-person camera — right-click to orbit, scroll to zoom, V to toggle first-person. Procedurally generated chunked terrain via simplex noise: quantized Minecraft-style heights, vertex-colored grass/earth, LOD falloff (full resolution near chunks, 8-cell far chunks), scattered flowers and decorations. 13 Kenney.nl character models with idle/walk/sprint/jump animations. Agent visual states (idle → listening → thinking → working → done → error) driven by 14 Zustand stores, synchronized from server events. HTML `<Billboard>` speech bubbles anchored in 3D space above agents. Bloom + vignette post-processing on status orbs and neon desk strips. 46 WebSocket message types, fully typed end-to-end with Zod on both sides.
 
 ### Production Infrastructure
 
-Everything is deployed and hosted — this isn't localhost. **Terraform** manages the entire stack as infrastructure-as-code:
+Terraform provisions the entire stack. `terraform apply` from zero to production in one command:
 
-- **Google Cloud Run** — WebSocket-capable game server with Cloud SQL proxy sidecar, 3600s connection timeout, TCP keepalive
-- **Google Cloud SQL** — PostgreSQL 15 with 7 tables (users, workspaces, workspace_agents, skills, conversations, task_history, scratchpad_entries) via Drizzle ORM
-- **Cloudflare Pages** — Static-exported Next.js frontend with Terraform-managed environment variables
-- **Firebase Auth** — Google Sign-In with Identity Platform, Admin SDK token verification, per-user scoped sessions
-- **Vercel AI Gateway** — Unified LLM proxy with BYOK provider keys
+- **GCP Cloud Run** — WebSocket server, HTTP/1.1, 3600s session timeout, TCP keepalive, Cloud SQL proxy as sidecar via volume mount
+- **Cloud SQL PostgreSQL 15** — 7 tables (users, workspaces, workspace_agents, skills, conversations, task_history, scratchpad_entries) via Drizzle ORM with typed schema
+- **Cloudflare Pages** — Static-exported Next.js, `NEXT_PUBLIC_*` vars baked at build time, Terraform-managed (not the dashboard)
+- **Firebase Auth** — Google Sign-In, Admin SDK token verification on every WebSocket handshake, per-user scoped Composio entity keys
+- **Cloud Build** — `gcloud builds submit` → amd64 Docker image → Artifact Registry → Cloud Run force-deploy (ARM-safe)
 
-Build pipeline: `gcloud builds submit` → Cloud Build → amd64 Docker image → Artifact Registry → Cloud Run. One `terraform apply` provisions everything.
+One `terraform apply`. No clicking through dashboards at 3am.
 
 ## Challenges we ran into
 
@@ -124,6 +136,8 @@ And honestly — **scoping a 36-hour vision** down to what we could actually shi
 
 **179 commits in 36 hours.** 6,000+ lines of TypeScript across 180 files. 7 database tables. 46 WebSocket message types. 14 Zustand stores. 7 server domain modules. 13 avatar models. Procedurally generated infinite terrain. Full Terraform IaC. Production deployment on Cloud Run + Cloudflare Pages. We shipped a product, not a prototype.
 
+**It resonated immediately.** Within 2 hours of going live, BossBot had 400+ impressions, a flood of DMs asking for demo links, and friends who actually sat down and used it — unprompted — and came back with positive feedback. That doesn't happen with prototypes. It happens when something feels genuinely different.
+
 ## What we learned
 
 **The interface layer for AI agents matters as much as the models.** A frontier model behind a chat box still feels like a chat box. Put that same model behind a character that walks, glows, speaks, and assembles a team — and suddenly delegation feels natural. The metaphor is the product.
@@ -138,17 +152,31 @@ We also learned a ton about WebRTC peer-to-peer audio, HRTF spatial panning, chu
 
 ## What's next for BossBot
 
-**Smarter model routing.** All agents currently use Gemini 3 Flash. We want automatic model selection — route research tasks to Claude, fast lookups to GPT-4o, creative work to the best model for the job. The Vercel AI Gateway already supports this; we just need the routing logic.
+### The Market
 
-**Deeper agent collaboration.** Agents already delegate tasks and post to shared scratchpads. Next: agents physically walking to each other in 3D to brainstorm, shared whiteboards rendered as 3D objects, and real-time pair-working animations.
+The AI agent market is projected to hit **$47B by 2030**, growing at 44% CAGR. Every company is racing to deploy agents — but nobody has solved the interface problem. Enterprises are buying Claude, GPT-4o, and Gemini licenses and pointing them at chat boxes. The bottleneck isn't the model. It's the interface. **BossBot is the OS layer above the models** — the spatial, collaborative, voice-native environment where agents actually live and work.
 
-**Skill marketplace.** Agents can already create reusable skills for themselves. We want a marketplace where skills are shared across workspaces — a network effect where every workspace makes every future workspace smarter.
+We're not competing with Claude or ChatGPT. We're the environment they run inside. Think Slack → Teams → BossBot: the same shift from async text to real-time presence, applied to AI agents instead of humans. The companies that figure out how to deploy and manage fleets of agents will need exactly what we built: a workspace where you can see what every agent is doing, delegate tasks naturally, and trust that the work is actually getting done.
 
-**More commerce.** The Visa MCP integration opens the door to full in-world shopping experiences — wishlists, price tracking, recurring purchases, team procurement.
+**Our edge:**
+- **Swarm-native from day one** — not a chatbot with plugins bolted on, but an architecture designed around dynamic team assembly
+- **Spatial = natural delegation** — walking up to an agent is fundamentally more intuitive than picking from a dropdown. The interface reduces cognitive load
+- **Real integrations, not demos** — Browser Use for live web research, Composio for OAuth-scoped real tool execution, Visa MCP for commerce, MiniMax for voice, Supermemory for cross-session context. The workflow automation is real
+- **Multiplayer** — AI workspaces are inherently collaborative. We built that from the start; everyone else will bolt it on later
 
-**More integrations.** With MCP support built in and Composio already providing Gmail, Calendar, Linear, Stripe, and SerpAPI — we want to connect to every tool ecosystem out there. Slack, Notion, GitHub, Figma, Jira.
+### The Roadmap
 
-Long term, we believe every company will have fleets of AI agents. Current interfaces are chat boxes and dashboards. **BossBot is the operating system for working with them** — and it's fun.
+**Smarter model routing.** Route research tasks to Claude, fast lookups to GPT-4o, creative work to Gemini — automatically, per agent, per task. Vercel AI Gateway already supports it. We just need the routing logic.
+
+**Deeper agent collaboration.** Agents physically walking to each other in 3D to brainstorm. Shared whiteboards as 3D objects. Real-time pair-working animations.
+
+**Skill marketplace.** Agents create reusable skills for themselves. Share skills across workspaces — a network effect where every workspace makes every future workspace smarter.
+
+**Enterprise tier.** SSO, audit logs, workspace-level permissions, dedicated agent pools, SLA-backed uptime. The architecture already supports it.
+
+**More integrations.** MCP support means any tool server plugs straight in. Slack, Notion, GitHub, Figma, Jira — each one is a one-config addition to the Composio or MCP layer.
+
+Every company will run fleets of AI agents. The question is what interface they use to manage them. Chat boxes aren't it. **BossBot is.**
 
 ---
 

@@ -19,6 +19,8 @@ import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
 import { WorkspaceBar } from '../ui/WorkspaceBar';
+import { ToolExecutionToasts } from '../ui/ToolExecutionToasts';
+import { ActivityFeed } from '../ui/ActivityFeed';
 import { CAMERA, WORLD } from '@/data/gameConfig';
 
 interface GameProps {
@@ -50,6 +52,8 @@ export function Game({ user }: GameProps) {
       <TTSAudioPlayer />
       <OnboardingOverlay />
       <ScratchpadFeed />
+      <ToolExecutionToasts />
+      <ActivityFeed />
       <BackgroundMusic />
       <GameToolbar />
       <WorkspaceBar />

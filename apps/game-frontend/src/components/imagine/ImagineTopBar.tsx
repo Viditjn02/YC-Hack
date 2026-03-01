@@ -29,7 +29,7 @@ export function ImagineTopBar({ canvasMode }: Props) {
     <div
       className={`fixed top-0 left-0 right-0 h-11 z-30 flex items-center justify-between px-6 transition-all duration-300 ${
         canvasMode
-          ? 'bg-imagine-window-warm/80 backdrop-blur-sm border-b border-black/[0.06]'
+          ? 'bg-[#b3bab1]/60 backdrop-blur-md border-b border-white/[0.12]'
           : 'bg-[#181825]/80 backdrop-blur-sm border-b border-white/[0.06]'
       }`}
     >

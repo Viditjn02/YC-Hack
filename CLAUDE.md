@@ -73,14 +73,10 @@ scripts/              health-check.mjs, generate-env.mjs
 The game server runs as a Docker container on GCP Cloud Run.
 
 - **Dockerfile**: `apps/game-server/Dockerfile` — multi-stage build (build with NX, then slim production image)
-- **Registry**: Google Artifact Registry at `us-central1-docker.pkg.dev/treehacks-2026-487500/bossroom/game-server`
 - **Cloud Build config**: `cloudbuild.yaml` — builds amd64 image on GCP
 
 **Deploy workflow:**
 ```bash
-# Build & push via Cloud Build (builds on GCP, always amd64)
-gcloud builds submit --config=cloudbuild.yaml --project=treehacks-2026-487500 --substitutions=SHORT_SHA=$(git rev-parse --short HEAD) .
-
 # Deploy to Cloud Run (Terraform manages env vars, Cloud SQL proxy, etc.)
 cd terraform && terraform apply
 ```

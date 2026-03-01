@@ -1,6 +1,10 @@
 # BossRoom
 
-**A multiplayer 3D virtual office where AI agents are your coworkers.** Walk around, talk to them by voice or text, and watch them execute real work — send emails, book meetings, create tickets, search products, process payments — all live. Built in 36 hours at TreeHacks 2026. 179 commits. 6,000+ lines of TypeScript. 100M+ LLM tokens burned on our own dime.
+**BossRoom** is a virtual office where AI agents are your coworkers, available in both immersive 3D (inspired by **Minecraft**) and streamlined 2D (like **Claude Imagine**!). Navigate a physics-enabled workspace or use a desktop-style interface, speaking by voice or text while agents execute real tasks: sending emails in Gmail, scheduling meetings on Google Calendar, filing tickets in Linear, and researching the web using Browser Use! 
+
+A Receptionist agent dynamically assembles teams of 3–12 specialists on demand. Built with Next.js, React Three Fiber, and Tailwind on the frontend; Node.js, WebSockets, and the Vercel AI SDK on the backend; deployed on GCP Cloud Run and Cloudflare Pages. 
+
+Built in 20 hours at **YC’s Browser Use Web Agents Hackathon**!
 
 <img width="1536" height="1024" alt="BossRoom" src="https://github.com/user-attachments/assets/0b7f8e0b-9dea-4c15-b636-1c7d94516e6d" />
 

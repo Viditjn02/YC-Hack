@@ -1,6 +1,4 @@
 🏗️ Product Requirements Document: Agent-First 3D Workspace Builder
-TreeHacks 2026 | Team: Parsa Khazaeepoul, Arvin Hakkakian, Vidit Jain
-Date: February 14, 2026
 
 ---
 

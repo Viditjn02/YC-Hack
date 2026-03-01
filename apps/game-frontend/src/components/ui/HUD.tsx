@@ -58,7 +58,7 @@ export function HUD() {
       {/* Left: Logo + connection */}
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-bold text-white tracking-tight">
-          Boss<span className="text-indigo-400">Room</span>
+          Boss<span className="text-indigo-400">Bot</span>
         </h1>
         <div className="flex items-center gap-1.5 bg-black/40 rounded-full px-2.5 py-1">
           <div

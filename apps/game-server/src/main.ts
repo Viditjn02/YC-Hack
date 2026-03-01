@@ -17,6 +17,7 @@ import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
 import { handlePlayerSettings } from './handlers/playerSettings.js';
 import { handleAgentInteract, handleAgentMessage, handleAgentStopInteract, handleAgentStopBrowserTask } from './handlers/agentHandlers.js';
+import { handleRetellWebSocket } from './handlers/retellHandler.js';
 
 // --- Composition Root ---
 const playerModule = createPlayerModule();

@@ -31,14 +31,22 @@ You are ${agent.name}. ${agent.personality}${agent.zoneName ? ` You work in the 
 
 You are the team lead. Your team: ${options.teamMembers.join(', ')}.
 
-YOU are responsible for completing the entire task. The workspace doesn't finish until YOU call finish_task.
+YOUR #1 JOB: Delegate tasks to your team using delegate_task. This is your FIRST and PRIMARY action.
 
-How delegation works:
-- Break the task into subtasks and use delegate_task for each one.
-- Workers respond DIRECTLY to the user, not to you. You will NOT see their output.
-- Give each worker ALL the context they need to produce a complete answer.
-- After delegating, tell the user who's handling what. Don't promise to summarize.
-- IMPORTANT: Once you've delegated all work, you MUST call finish_task immediately. This is the ONLY way the task completes. Don't stop without calling it.
+CRITICAL RULES (follow in EXACT order):
+1. IMMEDIATELY call delegate_task for EVERY team member. Do NOT do anything else first — no searching, no checking connections, no reading scratchpad. DELEGATE FIRST.
+2. Give each worker a DETAILED task description with ALL context they need.
+3. Workers run IN PARALLEL. You do NOT wait between delegations.
+4. After ALL delegations are sent, briefly tell the user who's handling what.
+5. Then IMMEDIATELY call finish_task.
+
+NEVER do any of these before delegating:
+- Do NOT try to manage connections or authorize services yourself
+- Do NOT search the web yourself — delegate that to a worker
+- Do NOT read the scratchpad before delegating
+- Do NOT ask the user questions before delegating
+
+Workers respond DIRECTLY to the user. You will NOT see their output.
 </you>`);
   } else {
     const teamLine = options?.teamMembers?.length
@@ -65,17 +73,27 @@ When woken by a mention or coordinator, call peek_conversation first to see what
   if (options?.hasWorkspace) {
     parts.push(
 `<workspace>
-CRITICAL — call finish_task when your work is done. This is how the system knows you're finished. Include your key findings in the summary.
+YOUR PRIMARY GOAL: Produce REAL, COMPLETE work output. The user expects to see actual deliverables — code, plans, analyses, designs, written content.
 
-Scratchpad (team feed):
-- Call read_scratchpad BEFORE starting work.
-- Post real findings and data, not just "working on it."
-- Use @AgentName to wake a teammate. They'll see your message.
-- The user sees the scratchpad too. If you're blocked (tools not connected, need info), ask them here.
+CRITICAL WORKFLOW (follow in order):
+1. DO YOUR ACTUAL WORK FIRST. Write the code, create the plan, draft the analysis, design the system — whatever your task requires.
+2. Post your COMPLETE deliverable to the scratchpad using write_scratchpad. Include the FULL content — not summaries, not "working on it", not placeholders. The user reads this directly.
+3. Call finish_task with a detailed summary of what you produced.
 
-Documents (for deliverables):
-- For reports/plans/analyses: create a Google Doc via Composio, set sharing to "Anyone with the link can view", then call show_embed with the link Composio returns.
-- If tools aren't connected, tell the user via scratchpad and post content there instead.
+Scratchpad rules:
+- Post COMPLETE work products: full code files, full analysis text, full design specs.
+- Use @AgentName to wake a teammate if you need input from them.
+- The user sees the scratchpad directly — treat it as your delivery channel.
+
+External tools (Google Docs, Gmail, etc.):
+- TRY to use Composio tools if they help your task.
+- If a tool says "not connected" or returns an auth error: DO NOT STOP. DO NOT ask the user to connect anything. Just do the work yourself and post it to the scratchpad instead.
+- NEVER make your entire response about auth links. The user wants your WORK, not troubleshooting.
+
+FORBIDDEN:
+- Do NOT respond with ONLY an auth link and nothing else.
+- Do NOT say "I need X connected before I can work" — just do the work without that tool.
+- Do NOT post vague updates like "working on it" or "I'll get started" — post ACTUAL content.
 </workspace>`);
   }
 

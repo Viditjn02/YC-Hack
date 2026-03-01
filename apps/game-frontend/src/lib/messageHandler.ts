@@ -6,11 +6,19 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useScratchpadStore } from '@/stores/scratchpadStore';
 import { useEmbedStore } from '@/stores/embedStore';
 import { useProductStore } from '@/stores/productStore';
+import { useToolStore } from '@/stores/toolStore';
+import { useActivityStore } from '@/stores/activityStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
 import { agents as defaultAgents, toDynamicAgentData } from '@/data/agents';
 import type { AgentData } from '@/data/agents';
+
+function resolveAgent(agentId: string): { name: string; color: string } {
+  const agents = useWorldStore.getState().agents;
+  const agent = agents.find((a) => a.id === agentId);
+  return { name: agent?.name ?? agentId, color: agent?.color ?? '#888' };
+}
 
 export function initWebSocket(username: string, token: string, tokenRefresher: () => Promise<string>, uid: string) {
   if (gameSocket.connected) return;
@@ -63,7 +71,20 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'agent:statusChanged': {
         const { agentId, status } = msg.payload;
+        const prevAgent = useWorldStore.getState().agents.find((a) => a.id === agentId);
+        const previousStatus = prevAgent?.status;
         useWorldStore.getState().updateAgentStatus(agentId, status);
+        const { name, color } = resolveAgent(agentId);
+        if (status !== 'idle' || previousStatus === 'working' || previousStatus === 'error') {
+          useActivityStore.getState().addEvent({
+            type: 'status',
+            agentId,
+            agentName: name,
+            agentColor: color,
+            status,
+            previousStatus,
+          });
+        }
         break;
       }
 
@@ -103,14 +124,29 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         useChatStore.getState().appendStream(msg.payload.agentId, msg.payload.delta);
         break;
 
-      case 'agent:toolExecution':
-        useChatStore.getState().addToolExecution(
-          msg.payload.agentId,
-          msg.payload.toolName,
-          msg.payload.status,
-          msg.payload.result,
-        );
+      case 'agent:toolExecution': {
+        const { agentId: toolAgentId, toolName, status: toolStatus, result: toolResult } = msg.payload;
+        useChatStore.getState().addToolExecution(toolAgentId, toolName, toolStatus, toolResult);
+
+        const toolAgent = resolveAgent(toolAgentId);
+        useToolStore.getState().addToolExecution({
+          id: `tool-${Date.now()}-${toolName}`,
+          agentId: toolAgentId,
+          toolName,
+          status: toolStatus,
+          result: toolResult,
+        });
+        useActivityStore.getState().addEvent({
+          type: 'tool',
+          agentId: toolAgentId,
+          agentName: toolAgent.name,
+          agentColor: toolAgent.color,
+          toolName,
+          toolStatus,
+          toolResult,
+        });
         break;
+      }
 
       case 'agent:ttsAudio':
         useVoiceStore.getState().enqueueTTS({
@@ -253,10 +289,18 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'agent:delegatedTask': {
         const { fromAgentId, toAgentName, task } = msg.payload;
-        // Show delegation in lead agent's chat as a special message
         useChatStore.getState().addMessage(fromAgentId, {
           role: 'agent',
           content: `*Delegating to ${toAgentName}:* ${task}`,
+        });
+        const delegateAgent = resolveAgent(fromAgentId);
+        useActivityStore.getState().addEvent({
+          type: 'delegation',
+          agentId: fromAgentId,
+          agentName: delegateAgent.name,
+          agentColor: delegateAgent.color,
+          delegateToName: toAgentName,
+          delegateTask: task,
         });
         break;
       }
@@ -267,10 +311,17 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'agent:skillCreated': {
         const { agentId, skill } = msg.payload;
-        // Show skill creation in chat
         useChatStore.getState().addMessage(agentId, {
           role: 'agent',
           content: `*New skill created:* ${skill.name} — ${skill.description}`,
+        });
+        const skillAgent = resolveAgent(agentId);
+        useActivityStore.getState().addEvent({
+          type: 'skill',
+          agentId,
+          agentName: skillAgent.name,
+          agentColor: skillAgent.color,
+          skillName: skill.name,
         });
         break;
       }

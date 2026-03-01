@@ -26,7 +26,6 @@ async function initVisaClient() {
   }
 
   try {
-    // @ts-expect-error — optional sponsor dependency, not installed
     const { createVisaMcpClient } = await import('@visa/mcp-client');
     visaClient = await createVisaMcpClient();
     visaReady = true;

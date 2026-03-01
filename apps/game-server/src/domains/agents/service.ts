@@ -64,19 +64,23 @@ export function createAgentService(deps: AgentServiceDeps) {
     );
     log.info(`[workspace] Lead "${leadAgent.name}" done in ${workspaceId}, triggering receptionist summary`);
 
-    // Gather scratchpad
-    const entries = scratchpadService.read(workspaceId);
-    const feed = entries.map(e => `[${e.authorName}] ${e.content}`).join('\n');
+    // Gather scratchpad (strip auth links to avoid expired URLs in summary)
+    const authUrlRe = /https:\/\/connect\.composio\.dev\/\S+/gi;
+    const mdAuthLinkRe = /\[([^\]]*)\]\(https:\/\/connect\.composio\.dev\/[^)]+\)/gi;
+    const stripAuth = (text: string) => text.replace(mdAuthLinkRe, '').replace(authUrlRe, '').replace(/\n{3,}/g, '\n').trim();
 
-    // Gather each agent's last assistant message for richer context
+    const entries = scratchpadService.read(workspaceId);
+    const feed = entries.map(e => `[${e.authorName}] ${stripAuth(e.content)}`).filter(e => e.length > 20).join('\n');
+
+    // Gather each agent's last assistant message (strip auth links)
     const agentOutputs = agents.filter(a => a.chatHistory.length > 0).map(a => {
       const lastMsg = a.chatHistory.filter(m => m.role === 'assistant').pop();
-      const snippet = lastMsg ? lastMsg.content.slice(0, 500) : '(no output)';
+      const snippet = lastMsg ? stripAuth(lastMsg.content).slice(0, 500) : '(no output)';
       return `[${a.name}] ${snippet}`;
-    }).join('\n\n');
+    }).filter(o => !o.endsWith('(no output)')).join('\n\n');
 
-    // Build summary request for receptionist
-    const summaryRequest = `[System] All agents in the workspace have completed their tasks.\n\nTeam feed:\n${feed}\n\nAgent final outputs:\n${agentOutputs}\n\nCompile a final summary for the user. Highlight the key findings from each team member and present the results clearly. If any agent created a document or embed, reference it so the user can find it.`;
+    // Build summary request for receptionist — explicitly tell it NOT to include auth links
+    const summaryRequest = `[System] All agents in the workspace have completed their tasks.\n\nTeam feed:\n${feed}\n\nAgent final outputs:\n${agentOutputs}\n\nCompile a final summary for the user. Highlight the key findings from each team member and present the results clearly. If any agent created a document or embed, reference it.\n\nIMPORTANT: Do NOT include any connect.composio.dev links in your response. Do NOT ask the user to connect any services. Just summarize the actual work that was done.`;
 
     // Trigger receptionist via handleStaticAgentMessage (hidden = don't show system prompt in chat)
     try {
@@ -234,6 +238,23 @@ No other text.`,
    * Handle delegation: lead agent sends a task to a worker agent.
    * Runs the worker's LLM with streaming and returns the response.
    */
+  // Track pending fire-and-forget delegations per workspace
+  const pendingDelegations = new Map<string, number>();
+
+  function incrementPending(workspaceId: string) {
+    pendingDelegations.set(workspaceId, (pendingDelegations.get(workspaceId) ?? 0) + 1);
+  }
+  function decrementPending(workspaceId: string) {
+    const n = (pendingDelegations.get(workspaceId) ?? 1) - 1;
+    pendingDelegations.set(workspaceId, Math.max(0, n));
+  }
+  function hasPendingDelegations(workspaceId: string): boolean {
+    return (pendingDelegations.get(workspaceId) ?? 0) > 0;
+  }
+
+  // Track whether the lead has been nudged to delegate (prevent infinite loops)
+  const delegateNudged = new Set<string>();
+
   async function handleDelegation(
     fromAgentId: string,
     targetName: string,
@@ -244,6 +265,9 @@ No other text.`,
   ): Promise<string> {
     const targetAgent = agentRepo.findDynamicByName(targetName);
     if (!targetAgent) {
+      // Decrement counter since delegation won't proceed
+      const fromAgent = agentRepo.getDynamic(fromAgentId);
+      if (fromAgent) decrementPending(fromAgent.workspaceId);
       throw new Error(`Agent "${targetName}" not found in workspace`);
     }
 
@@ -327,13 +351,40 @@ No other text.`,
       // Track user message in chat history
       agentRepo.appendChatHistory(targetAgent.agentId, 'user', taskDescription);
 
-      // Stream the worker's response to the frontend
+      // Stream the worker's response to the frontend (with tool execution events)
       const result = streamText({
         model,
         system: targetAgent.systemPrompt,
         messages: [{ role: 'user' as const, content: taskDescription }],
         tools: workerToolsFinal,
         stopWhen: stepCountIs(25),
+        onChunk: ({ chunk }) => {
+          if (chunk.type === 'tool-call') {
+            playerService.send(ws, {
+              type: 'agent:toolExecution',
+              payload: { agentId: targetAgent.agentId, toolName: chunk.toolName, status: 'started' },
+            });
+          }
+        },
+        onStepFinish: ({ toolCalls, toolResults }) => {
+          for (let i = 0; i < toolCalls.length; i++) {
+            const tc = toolCalls[i];
+            const tr = toolResults[i];
+            const failed = tr && typeof tr === 'object' && 'error' in tr;
+            const resultStr = tr != null
+              ? (typeof tr === 'string' ? tr : JSON.stringify(tr)).slice(0, 2000)
+              : undefined;
+            playerService.send(ws, {
+              type: 'agent:toolExecution',
+              payload: {
+                agentId: targetAgent.agentId,
+                toolName: tc.toolName,
+                status: failed ? 'failed' : 'completed',
+                result: resultStr,
+              },
+            });
+          }
+        },
       });
 
       let fullResponse = '';
@@ -353,8 +404,85 @@ No other text.`,
         log.warn(`[delegate] ${targetAgent.name} produced empty text response (tool-only turn)`);
       }
 
-      // Send complete message — skip if empty
-      if (fullResponse) {
+      // Detect auth-only responses and auto-retry WITHOUT showing expired links to user
+      const isAuthOnly = /connect\.composio\.dev/i.test(fullResponse) && fullResponse.length < 800 && !calledFinishTask;
+
+      if (isAuthOnly) {
+        // Don't send the auth-only message to the user — suppress it entirely
+        log.info(`[delegate] Worker ${targetAgent.name} only produced auth links — suppressing and retrying with actual work`);
+
+        // Show a brief status update instead of auth links
+        playerService.send(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId: targetAgent.agentId, role: 'assistant', content: `working on it without external tools...` },
+        });
+
+        agentRepo.appendChatHistory(targetAgent.agentId, 'user',
+          '[System] The tools are not connected right now. That is OK. Do NOT ask the user to connect anything. Instead, do your work WITHOUT those tools. Write your complete deliverable (code, analysis, plan, design) directly to the scratchpad using write_scratchpad. Then call finish_task. GO.'
+        );
+
+        try {
+          const retryResult = streamText({
+            model,
+            system: targetAgent.systemPrompt,
+            messages: [
+              { role: 'user' as const, content: taskDescription },
+              { role: 'assistant' as const, content: fullResponse },
+              { role: 'user' as const, content: '[System] The tools are not connected right now. That is OK. Do NOT ask the user to connect anything. Instead, do your work WITHOUT those tools. Write your complete deliverable (code, analysis, plan, design) directly to the scratchpad using write_scratchpad. Then call finish_task. GO.' },
+            ],
+            tools: workerToolsFinal,
+            stopWhen: stepCountIs(25),
+            onChunk: ({ chunk }) => {
+              if (chunk.type === 'tool-call') {
+                playerService.send(ws, {
+                  type: 'agent:toolExecution',
+                  payload: { agentId: targetAgent.agentId, toolName: chunk.toolName, status: 'started' },
+                });
+              }
+            },
+            onStepFinish: ({ toolCalls, toolResults }) => {
+              for (let i = 0; i < toolCalls.length; i++) {
+                const tc = toolCalls[i];
+                const tr = toolResults[i];
+                const failed = tr && typeof tr === 'object' && 'error' in tr;
+                const resultStr = tr != null
+                  ? (typeof tr === 'string' ? tr : JSON.stringify(tr)).slice(0, 2000)
+                  : undefined;
+                playerService.send(ws, {
+                  type: 'agent:toolExecution',
+                  payload: {
+                    agentId: targetAgent.agentId,
+                    toolName: tc.toolName,
+                    status: failed ? 'failed' : 'completed',
+                    result: resultStr,
+                  },
+                });
+              }
+            },
+          });
+
+          let retryResponse = '';
+          for await (const delta of retryResult.textStream) {
+            retryResponse += delta;
+            playerService.send(ws, {
+              type: 'agent:chatStream',
+              payload: { agentId: targetAgent.agentId, delta },
+            });
+          }
+
+          if (retryResponse) {
+            log.info(`[delegate] ${targetAgent.name} retry response (${retryResponse.length} chars): ${retryResponse.slice(0, 200)}...`);
+            agentRepo.appendChatHistory(targetAgent.agentId, 'assistant', retryResponse);
+            playerService.send(ws, {
+              type: 'agent:chatMessage',
+              payload: { agentId: targetAgent.agentId, role: 'assistant', content: retryResponse },
+            });
+          }
+        } catch (retryErr) {
+          log.error(`[delegate] Worker ${targetAgent.name} retry failed:`, retryErr);
+        }
+      } else if (fullResponse) {
+        // Normal response (no auth issues) — send to frontend
         playerService.send(ws, {
           type: 'agent:chatMessage',
           payload: { agentId: targetAgent.agentId, role: 'assistant', content: fullResponse },
@@ -362,7 +490,6 @@ No other text.`,
       }
 
       // Workers go back to idle after delegation — they can be re-delegated to.
-      // Only the lead calls finish_task to signal overall completion.
       if (!calledFinishTask) {
         agentRepo.setStatus(targetAgent.agentId, 'idle');
         broadcastFn({
@@ -371,9 +498,28 @@ No other text.`,
         });
       }
 
+      decrementPending(targetAgent.workspaceId);
+      log.info(`[delegate] Worker ${targetAgent.name} finished (pending: ${pendingDelegations.get(targetAgent.workspaceId) ?? 0})`);
+
+      // If all delegations done and lead is idle/done, trigger completion check
+      if (!hasPendingDelegations(targetAgent.workspaceId)) {
+        const leadAgent = agentRepo.getByWorkspace(targetAgent.workspaceId).find(a => a.role === 'lead');
+        if (leadAgent && (leadAgent.status === 'idle' || leadAgent.status === 'done')) {
+          if (leadAgent.status !== 'done') {
+            log.info(`[delegate] All workers done — nudging lead ${leadAgent.name} to finish_task`);
+            handleDynamicAgentMessage(
+              playerId, leadAgent.agentId,
+              '[System] All workers have finished their tasks. Call finish_task now with a summary of what the team accomplished.',
+              ws, broadcastFn, true,
+            ).catch(err => log.error(`[delegate] Nudge failed:`, err));
+          }
+        }
+      }
+
       return fullResponse;
     } catch (err) {
       log.error(`[delegate] Worker ${targetAgent.name} error:`, err);
+      decrementPending(targetAgent.workspaceId);
       agentRepo.setStatus(targetAgent.agentId, 'error');
       broadcastFn({
         type: 'agent:statusChanged',
@@ -426,7 +572,7 @@ No other text.`,
         } catch (err) {
           log.error(`[workspace] Auto-kickoff failed for ${leadAgent.name}:`, err);
         }
-      }, 3000); // 3s delay for build animation
+      }, 1000); // 1s delay for build animation
     }
   }
 
@@ -526,6 +672,7 @@ No other text.`,
           agentId,
           onDelegate: (targetName, task) =>
             handleDelegation(agentId, targetName, task, playerId, ws, broadcastFn),
+          onDelegateStarted: () => incrementPending(dynamicAgent.workspaceId),
           broadcastFn,
         });
         tools = { ...tools, ...delegateTools };
@@ -614,6 +761,7 @@ No other text.`,
           type: 'agent:chatMessage',
           payload: { agentId, role: 'assistant', content: fullResponse },
         });
+
       }
 
       // TTS: synthesize with hardcoded "Dominus" voice (non-blocking, fail-soft) — voice input only
@@ -633,9 +781,8 @@ No other text.`,
       // --- POST-STREAM: Nudge check ---
       if (calledFinishTask) {
         // Status already 'done' from callback — nothing to do
-      } else if (dynamicAgent.role === 'lead' && !isNudge) {
-        // Lead owns workspace completion. But only nudge if all workers have settled —
-        // async scratchpad chains may still be running.
+      } else if (dynamicAgent.role === 'lead') {
+        // Lead owns workspace completion. Check both agent status AND pending delegation counter.
         agentRepo.setStatus(agentId, 'idle');
         broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
 
@@ -643,8 +790,20 @@ No other text.`,
         const anyBusy = workspaceAgents.some(
           a => a.agentId !== agentId && (a.status === 'working' || a.status === 'thinking'),
         );
+        const pending = hasPendingDelegations(dynamicAgent.workspaceId);
 
-        if (!anyBusy) {
+        const workersExist = workspaceAgents.some(a => a.agentId !== agentId && a.role === 'worker');
+        const neverDelegated = !anyBusy && !pending && workersExist && !delegateNudged.has(dynamicAgent.workspaceId);
+
+        if (neverDelegated) {
+          delegateNudged.add(dynamicAgent.workspaceId);
+          log.info(`[nudge] Lead ${dynamicAgent.name} never delegated — nudging to delegate tasks`);
+          await handleDynamicAgentMessage(
+            playerId, agentId,
+            '[System] You MUST delegate tasks to your team NOW using delegate_task. You have not delegated anything yet. Call delegate_task for each team member immediately. Do NOT do anything else first.',
+            ws, broadcastFn, true,
+          );
+        } else if (!anyBusy && !pending) {
           log.info(`[nudge] Lead ${dynamicAgent.name} done, all workers settled — nudging to finish_task`);
           await handleDynamicAgentMessage(
             playerId, agentId,
@@ -652,7 +811,7 @@ No other text.`,
             ws, broadcastFn, true,
           );
         } else {
-          log.info(`[nudge] Lead ${dynamicAgent.name} idle, workers still busy — will re-engage via scratchpad`);
+          log.info(`[nudge] Lead ${dynamicAgent.name} idle, workers busy=${anyBusy} pending=${pending} — workers will trigger finish when done`);
         }
         return;
       } else if (!calledWriteScratchpad && !isNudge) {
@@ -849,6 +1008,7 @@ No other text.`,
           type: 'agent:chatMessage',
           payload: { agentId, role: 'assistant', content: fullResponse },
         });
+
       }
 
       // TTS: synthesize and send audio (non-blocking, fail-soft) — voice input only

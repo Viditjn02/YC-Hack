@@ -93,6 +93,12 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       timestamp: z.number(),
     })),
   }) }),
+  z.object({ type: z.literal('agent:actionRequired'), payload: z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    content: z.string(),
+    kind: z.enum(['auth', 'question']),
+  }) }),
   z.object({ type: z.literal('workspace:embedPanel'), payload: z.object({
     workspaceId: z.string(),
     embed: z.object({

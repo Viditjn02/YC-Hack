@@ -98,6 +98,7 @@ interface SetupWorkspaceDeps {
 interface DelegateTaskDeps {
   agentId: string;
   onDelegate: (targetName: string, task: string) => Promise<string>;
+  onDelegateStarted?: () => void;
   broadcastFn: (msg: ServerMessage) => void;
 }
 
@@ -244,24 +245,27 @@ export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
 
 /**
  * The delegate_task tool — only available to lead agents.
- * Routes a task to another dynamic agent and returns their response.
+ * Fire-and-forget: kicks off the worker concurrently so the lead can
+ * delegate to multiple workers in rapid succession (parallel execution).
  */
 export function createDelegateTaskTool(deps: DelegateTaskDeps): ToolSet {
-  const { agentId, onDelegate } = deps;
+  const { agentId, onDelegate, onDelegateStarted } = deps;
 
   const delegateTask = tool({
-    description: 'Assign a subtask to one of your team members. They will work on it and report back.',
+    description: 'Assign a subtask to one of your team members. They will start working immediately in parallel. You do NOT need to wait — delegate all tasks at once, then call finish_task.',
     inputSchema: delegateTaskParams,
     execute: async (args: z.infer<typeof delegateTaskParams>) => {
       log.info(`[delegate] ${agentId} → ${args.targetAgentName}: ${args.taskDescription.slice(0, 80)}...`);
 
-      try {
-        const response = await onDelegate(args.targetAgentName, args.taskDescription);
-        return `${args.targetAgentName} completed the task. Their response:\n\n${response}`;
-      } catch (err) {
-        log.error(`[delegate] Failed to delegate to ${args.targetAgentName}:`, err);
-        return `Failed to delegate to ${args.targetAgentName}: ${err instanceof Error ? err.message : 'Unknown error'}`;
-      }
+      // Signal that a delegation has started (for pending counter)
+      onDelegateStarted?.();
+
+      // Fire-and-forget: start the worker without awaiting completion
+      onDelegate(args.targetAgentName, args.taskDescription).catch((err) => {
+        log.error(`[delegate] Worker ${args.targetAgentName} failed:`, err);
+      });
+
+      return `Delegated task to ${args.targetAgentName} — they are now working on it in parallel. Continue delegating to other team members or call finish_task when all tasks are assigned.`;
     },
   });
 

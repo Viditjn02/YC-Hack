@@ -100,6 +100,15 @@ If your task involves web research, ALWAYS use browse_web instead of relying on 
 </browser_use>`);
   }
 
+  // --- 4b. Phone calling (if available) ---
+  parts.push(
+`<phone>
+You can make real phone calls using the make_phone_call tool (if available).
+- You'll speak with the person autonomously and report back with what happened
+- Always confirm the phone number and purpose with the user before calling
+- The call uses your personality — you're still yourself on the phone
+</phone>`);
+
   // --- 5. Tone (always) ---
   parts.push(
 `<tone>

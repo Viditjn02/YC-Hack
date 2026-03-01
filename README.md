@@ -6,7 +6,6 @@ A Receptionist agent dynamically assembles teams of 3–12 specialists on demand
 
 Built in 20 hours at **YC’s Browser Use Web Agents Hackathon**!
 
-<img width="1536" height="1024" alt="BossBot" src="https://github.com/user-attachments/assets/0b7f8e0b-9dea-4c15-b636-1c7d94516e6d" />
 
 
 ---

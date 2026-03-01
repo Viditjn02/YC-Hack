@@ -106,7 +106,7 @@ export function ActivityFeed() {
       {/* Toggle button — bottom-left above ScratchpadFeed */}
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className={`fixed bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer ${
+        className={`fixed bottom-4 left-56 z-50 flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer ${
           open
             ? 'bg-indigo-600/90 text-white'
             : 'bg-black/60 hover:bg-black/80 text-white/60 hover:text-white'
@@ -126,7 +126,7 @@ export function ActivityFeed() {
 
       {/* Feed panel */}
       {open && (
-        <div className="fixed left-4 bottom-16 w-96 z-50 bg-gray-950/95 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden max-h-[70vh] flex flex-col animate-[fadeIn_0.2s_ease-out]">
+        <div className="fixed left-56 bottom-16 w-96 z-50 bg-gray-950/95 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden max-h-[70vh] flex flex-col animate-[fadeIn_0.2s_ease-out]">
           {/* Header */}
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">

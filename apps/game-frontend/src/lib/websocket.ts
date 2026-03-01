@@ -116,6 +116,7 @@ class GameWebSocket {
     };
 
     this.ws.onmessage = (event) => {
+      if (!event.data) return;
       try {
         const parsed = serverMessageSchema.safeParse(JSON.parse(event.data as string));
         if (!parsed.success) {

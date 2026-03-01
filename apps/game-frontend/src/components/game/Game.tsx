@@ -16,6 +16,7 @@ import { PunchHint } from './PunchHint';
 import { ViewHint } from './ViewHint';
 
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
+import { ActivityFeed } from '../ui/ActivityFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
 import { WorkspaceBar } from '../ui/WorkspaceBar';
@@ -50,6 +51,7 @@ export function Game({ user }: GameProps) {
       <TTSAudioPlayer />
       <OnboardingOverlay />
       <ScratchpadFeed />
+      <ActivityFeed />
       <BackgroundMusic />
       <GameToolbar />
       <WorkspaceBar />

@@ -61,9 +61,9 @@ export function ImagineTopBar({ canvasMode }: Props) {
         <ModeToggle canvasMode={canvasMode} />
         {user && (
           <div className="flex items-center gap-2">
-            {user.photoURL && (
-              <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
-            )}
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] text-white/70 font-medium">
+              {(user.displayName ?? user.email ?? '?').charAt(0).toUpperCase()}
+            </div>
             <span
               className={`text-xs ${
                 canvasMode ? 'text-imagine-canvas-text-sec' : 'text-white/60'

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useChatStore } from '@/stores/chatStore';
+import { useBrowserUseStore } from '@/stores/browserUseStore';
 
 const SUGGESTIONS = [
   { emoji: '\u{1F680}', text: 'Build me a landing page', prompt: 'Build me a modern landing page with hero section, features, and pricing' },
@@ -19,6 +20,8 @@ export function WelcomeDashboard() {
   const [input, setInput] = useState('');
   const openChat = useChatStore((s) => s.openChat);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const activeSessions = useBrowserUseStore((s) => s.activeSessions);
+  const browserSession = activeSessions.size > 0 ? Array.from(activeSessions.values())[0] : null;
 
   const handleSend = (text: string) => {
     if (!text.trim()) return;
@@ -52,6 +55,54 @@ export function WelcomeDashboard() {
 
       {/* Center content */}
       <div className="absolute inset-0 flex flex-col items-center justify-end pb-28">
+        {/* Live browser panel when an agent is browsing */}
+        {browserSession?.liveUrl && (
+          <div
+            className="w-full max-w-[640px] mb-5 px-4"
+            style={{ animation: 'imagineSlideUp 400ms ease-out' }}
+          >
+            <div className="rounded-2xl overflow-hidden border shadow-2xl"
+              style={{
+                borderColor: 'rgba(6, 182, 212, 0.3)',
+                boxShadow: '0 0 40px rgba(6, 182, 212, 0.1), 0 20px 40px rgba(0,0,0,0.12)',
+                background: '#0c0c14',
+              }}
+            >
+              <div className="flex items-center justify-between px-4 py-2"
+                style={{ background: 'rgba(6, 182, 212, 0.06)' }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="relative flex items-center justify-center w-4 h-4 shrink-0">
+                    <div className="absolute w-4 h-4 rounded-full bg-cyan-500/25 animate-ping" />
+                    <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
+                  </div>
+                  <span className="text-[11px] text-cyan-300/80 font-medium">
+                    {browserSession.agentName}&apos;s Browser
+                  </span>
+                </div>
+                <a
+                  href={browserSession.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/30 hover:text-white/60 p-1 rounded hover:bg-white/10 transition-colors"
+                  title="Open in new tab"
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M10 2h4v4M6 10l8-8M14 9v5a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1h5" />
+                  </svg>
+                </a>
+              </div>
+              <iframe
+                src={browserSession.liveUrl}
+                title={`${browserSession.agentName} browser session`}
+                className="w-full border-0"
+                style={{ height: 340, background: '#111118' }}
+                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Suggestion cards */}
         <div
           className="flex gap-3 mb-5"

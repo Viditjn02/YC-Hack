@@ -45,7 +45,7 @@ const createSkillParams = z.object({
 const listSkillsParams = z.object({});
 
 const setupWorkspaceParams = z.object({
-  taskSummary: z.string().describe('Brief summary of what the user needs'),
+  taskSummary: z.string().describe('Brief summary of the user\'s LATEST request only. Ignore previous conversation history — focus on what they just asked for.'),
   agents: z.array(z.object({
     name: z.string().max(30).describe('Creative agent name (e.g., "Strategist", "Scribe")'),
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe('Hex color for the agent (e.g., "#E74C3C")'),
@@ -57,7 +57,7 @@ const setupWorkspaceParams = z.object({
       description: z.string().max(200),
       instructions: z.string().max(2000),
     })).min(1).max(4).describe('Skills for this agent'),
-    initialTask: z.string().optional().describe('Initial task for the lead agent to begin working on'),
+    initialTask: z.string().optional().describe('Initial task for the lead — MUST be the user\'s LATEST request, word for word. Do NOT mix in previous conversation context or old tasks.'),
   })).min(1),
 });
 

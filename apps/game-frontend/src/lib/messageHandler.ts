@@ -200,14 +200,11 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           id: w.id,
           taskSummary: w.taskSummary,
           status: w.status,
-          agentIds: [] as string[],  // will be populated when subscribing
+          agentIds: [] as string[],
         }));
         useChatStore.getState().setWorkspaceTabs(tabs);
-        // Auto-subscribe to most recent active workspace
-        const activeWs = workspaces.find(w => w.status === 'active');
-        if (activeWs) {
-          useChatStore.getState().switchWorkspace(activeWs.id);
-        }
+        // Don't auto-subscribe — always start fresh on page load.
+        // User creates new workspaces via the receptionist.
         break;
       }
 

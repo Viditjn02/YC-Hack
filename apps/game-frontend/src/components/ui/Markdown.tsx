@@ -7,27 +7,43 @@ import { useEmbedStore } from '@/stores/embedStore';
 
 const components: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      onClick={(e) => {
-        e.preventDefault();
-        if (!href) return;
-        const title = typeof children === 'string' ? children : (Array.isArray(children) ? children.join('') : 'Link');
-        useEmbedStore.getState().addEmbed({
-          id: `chat-${Date.now()}`,
-          url: href,
-          title: String(title).slice(0, 60),
-          type: 'other',
-          agentId: 'chat',
-          agentName: 'Chat',
-        });
-      }}
-      className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 cursor-pointer"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    // Composio connect links must navigate so the user can complete OAuth
+    const isConnectLink = href?.includes('connect.composio.dev');
+    if (isConnectLink && href) {
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 cursor-pointer"
+        >
+          {children}
+        </a>
+      );
+    }
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          e.preventDefault();
+          if (!href) return;
+          const title = typeof children === 'string' ? children : (Array.isArray(children) ? children.join('') : 'Link');
+          useEmbedStore.getState().addEmbed({
+            id: `chat-${Date.now()}`,
+            url: href,
+            title: String(title).slice(0, 60),
+            type: 'other',
+            agentId: 'chat',
+            agentName: 'Chat',
+          });
+        }}
+        className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 cursor-pointer"
+      >
+        {children}
+      </a>
+    );
+  },
   ul: ({ children }) => <ul className="mb-2 ml-4 list-disc last:mb-0 space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal last:mb-0 space-y-1">{children}</ol>,
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,

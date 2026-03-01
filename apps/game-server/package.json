@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "retell-sdk": "^5.5.0"
+    "@supermemory/tools": "^1.4.0",
+    "retell-sdk": "^5.5.0",
+    "supermemory": "^4.15.0"
   }
 }

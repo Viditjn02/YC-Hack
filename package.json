@@ -54,9 +54,13 @@
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/postcss": "^4.1.18",
+    "@visa/api-client": "file:vendor/visa-mcp/packages/api-client",
+    "@visa/mcp-client": "file:vendor/visa-mcp/packages/mcp-client",
+    "@visa/token-manager": "file:vendor/visa-mcp/packages/token-manager",
     "ai": "^6.0.86",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "convex": "^1.32.0",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1",
     "drizzle-zod": "^0.8.3",
@@ -72,9 +76,6 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
     "ws": "^8.19.0",
-    "zod": "^4.3.6",
-    "@visa/mcp-client": "file:vendor/visa-mcp/packages/mcp-client",
-    "@visa/token-manager": "file:vendor/visa-mcp/packages/token-manager",
-    "@visa/api-client": "file:vendor/visa-mcp/packages/api-client"
+    "zod": "^4.3.6"
   }
 }

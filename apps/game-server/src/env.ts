@@ -32,6 +32,9 @@ const envSchema = z.object({
   // Browser-use Cloud API
   BROWSER_USE_API_KEY: z.string().optional(),
 
+  // Supermemory — agent long-term memory
+  SUPERMEMORY_API_KEY: z.string().optional(),
+
   // Retell AI — agent phone calling
   RETELL_API_KEY: z.string().optional(),
   RETELL_AGENT_ID: z.string().optional(),

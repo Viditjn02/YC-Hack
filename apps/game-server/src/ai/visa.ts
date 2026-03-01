@@ -26,6 +26,7 @@ async function initVisaClient() {
   }
 
   try {
+    // @ts-expect-error — vendor package types not resolved in all environments
     const { createVisaMcpClient } = await import('@visa/mcp-client');
     visaClient = await createVisaMcpClient();
     visaReady = true;

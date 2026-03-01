@@ -79,7 +79,7 @@ export function Scene() {
 
       <Terrain />
       <MissionControlSky />
-      {/* Easter egg: Stanford campus hidden in the terrain */}
+      {/* Easter egg: YC building hidden in the terrain */}
       <Suspense fallback={null}>
         <StanfordCampus />
       </Suspense>

@@ -83,19 +83,20 @@ Documents (for deliverables):
   if (options?.hasWorkspace) {
     parts.push(
 `<browser_use priority="critical">
-You have a browse_web tool that opens a real browser and autonomously navigates the web. USE IT AGGRESSIVELY.
+You have a browse_web tool that opens a real browser and autonomously navigates the web.
 
-When to use browse_web:
-- ANY task that involves looking something up online — use browse_web FIRST
+USE browse_web for web search and research tasks:
 - Researching a person, company, topic, or product
+- Looking up information, news, stats, or data
 - Visiting specific websites or URLs
-- Gathering data, stats, news, or information
-- Checking social media profiles, LinkedIn, GitHub, etc.
-- Any "find out about X" or "look up Y" request
+- Checking social media profiles, LinkedIn, GitHub, portfolios, etc.
+- Any "find out about X", "look up Y", or "search for Z" request
 
-You should default to using browse_web for almost every task. Even if you think you know the answer, use browse_web to get fresh, real-time data. Your training data is stale — the web is current.
+Do NOT use browse_web for:
+- Sending emails, creating calendar events, or other actions you already have Composio tools for
+- Tasks that don't require web information
 
-Do NOT skip browse_web and rely on your memory. The user wants you to actually go look things up.
+If your task involves web research, ALWAYS use browse_web instead of relying on your training data — the web has current information.
 </browser_use>`);
   }
 

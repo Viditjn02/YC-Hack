@@ -29,15 +29,21 @@ interface BrowseWebToolDeps {
 export function createBrowseWebTool(deps: BrowseWebToolDeps) {
   const { agentId, agentName, agentPersonality, workspaceId, agentRepo, playerService, ws } = deps;
 
+  function sendBrowserStatus(active: boolean, liveUrl?: string) {
+    playerService.send(ws, {
+      type: 'agent:browserUseStatus',
+      payload: { agentId, agentName, active, ...(liveUrl ? { liveUrl } : {}) },
+    });
+  }
+
   return {
     browse_web: tool({
       description:
-        'YOUR PRIMARY RESEARCH TOOL. Opens a real browser to autonomously navigate the web. ' +
-        'Use this FIRST for ANY task involving research, looking things up, finding information, ' +
-        'visiting websites, checking profiles, or gathering data. ' +
-        'Provide a clear, detailed task description. The browser will navigate sites, click links, ' +
-        'fill forms, and extract information. Returns the result when done. ' +
-        'ALWAYS prefer this over relying on your training data — the web has current information.',
+        'Opens a real browser to search the web and research topics. ' +
+        'Use this for web search tasks: researching people, companies, topics, visiting URLs, ' +
+        'gathering information, checking profiles, or looking up data. ' +
+        'Do NOT use for actions you already have tools for (email, calendar, etc). ' +
+        'Provide a clear, detailed description of what to search for or which sites to visit.',
       inputSchema: z.object({
         task: z.string().describe('A detailed description of what to do in the browser. Be specific about what websites to visit, what information to find, or what actions to take.'),
       }),
@@ -47,56 +53,44 @@ export function createBrowseWebTool(deps: BrowseWebToolDeps) {
         log.info(`[browse_web] ======= BROWSER-USE STARTING =======`);
         log.info(`[browse_web] Agent: ${agentName} | Task: ${task.slice(0, 200)}`);
 
-        // Launch browser-use task
-        const browserTask = await browserUse.runTask(taskPrompt);
-        agentRepo.setBrowserTask(agentId, browserTask.id);
+        try {
+          const browserTask = await browserUse.runTask(taskPrompt);
+          log.info(`[browse_web] Task created: id=${browserTask.id} status=${browserTask.status} live_url=${browserTask.live_url ?? 'none'}`);
+          agentRepo.setBrowserTask(agentId, browserTask.id);
 
-        // Notify frontend that browser-use is active
-        playerService.send(ws, {
-          type: 'agent:browserUseStatus',
-          payload: {
-            agentId,
-            agentName,
-            active: true,
-            liveUrl: browserTask.live_url,
-          },
-        });
+          sendBrowserStatus(true, browserTask.live_url);
 
-        // Send live browser URL via embed panel
-        if (browserTask.live_url) {
-          playerService.send(ws, {
-            type: 'workspace:embedPanel',
-            payload: {
-              workspaceId,
-              embed: {
-                id: `browser-${browserTask.id}`,
-                url: browserTask.live_url,
-                title: `${agentName}'s Browser`,
-                type: 'other',
-                agentId,
-                agentName,
+          if (browserTask.live_url) {
+            playerService.send(ws, {
+              type: 'workspace:embedPanel',
+              payload: {
+                workspaceId,
+                embed: {
+                  id: `browser-${browserTask.id}`,
+                  url: browserTask.live_url,
+                  title: `${agentName}'s Browser`,
+                  type: 'other',
+                  agentId,
+                  agentName,
+                },
               },
-            },
-          });
+            });
+          }
+
+          const output = await pollBrowserTask(browserTask.id, agentId, agentName, agentRepo, playerService, ws);
+
+          log.info(`[browse_web] ======= BROWSER-USE FINISHED =======`);
+          log.info(`[browse_web] Agent: ${agentName} | Output: ${(output ?? '').slice(0, 200)}`);
+          sendBrowserStatus(false);
+
+          return output;
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          log.error(`[browse_web] ======= BROWSER-USE ERROR ======= Agent: ${agentName} | ${errMsg}`);
+          agentRepo.clearBrowserTask(agentId);
+          sendBrowserStatus(false);
+          return `Error: Browser task failed — ${errMsg}`;
         }
-
-        // Poll until completion
-        const output = await pollBrowserTask(browserTask.id, agentId, agentName, agentRepo, playerService, ws);
-
-        log.info(`[browse_web] ======= BROWSER-USE FINISHED =======`);
-        log.info(`[browse_web] Agent: ${agentName} | Output: ${(output ?? '').slice(0, 200)}`);
-
-        // Notify frontend that browser-use has ended
-        playerService.send(ws, {
-          type: 'agent:browserUseStatus',
-          payload: {
-            agentId,
-            agentName,
-            active: false,
-          },
-        });
-
-        return output;
       },
     }),
   };
@@ -113,18 +107,19 @@ function pollBrowserTask(
   playerService: PlayerService,
   ws: WebSocket,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const startTime = Date.now();
     let lastStepCount = 0;
 
     const poll = async () => {
       try {
         const status = await browserUse.getTaskStatus(taskId);
+        log.debug(`[browse_web] Poll ${agentName}: status=${status.status} steps=${status.steps?.length ?? 0}`);
 
-        // Relay new steps as tool execution events
         if (status.steps && status.steps.length > lastStepCount) {
           for (let i = lastStepCount; i < status.steps.length; i++) {
             const step = status.steps[i];
+            log.info(`[browse_web] ${agentName} step ${step.step_number}: ${step.description?.slice(0, 100)}`);
             playerService.send(ws, {
               type: 'agent:toolExecution',
               payload: {
@@ -140,7 +135,7 @@ function pollBrowserTask(
 
         if (status.status === 'finished') {
           agentRepo.clearBrowserTask(agentId);
-          log.info(`[browse_web] ${agentName} task finished`);
+          log.info(`[browse_web] ${agentName} task finished successfully`);
           resolve(status.output ?? '(no output)');
           return;
         }
@@ -149,11 +144,10 @@ function pollBrowserTask(
           agentRepo.clearBrowserTask(agentId);
           const errMsg = `Browser task ${status.status}: ${status.output ?? 'unknown error'}`;
           log.warn(`[browse_web] ${agentName}: ${errMsg}`);
-          resolve(`Error: ${errMsg}`); // resolve with error text so LLM can handle it
+          resolve(`Error: ${errMsg}`);
           return;
         }
 
-        // Timeout check
         if (Date.now() - startTime > MAX_POLL_TIME_MS) {
           log.warn(`[browse_web] ${agentName} task ${taskId} timed out after ${MAX_POLL_TIME_MS / 1000}s`);
           browserUse.stopTask(taskId).catch(() => {});
@@ -164,8 +158,10 @@ function pollBrowserTask(
 
         setTimeout(poll, POLL_INTERVAL_MS);
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        log.error(`[browse_web] ${agentName} poll error: ${errMsg}`);
         agentRepo.clearBrowserTask(agentId);
-        reject(err);
+        resolve(`Error: Browser poll failed — ${errMsg}`);
       }
     };
 

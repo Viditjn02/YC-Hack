@@ -1,4 +1,4 @@
-# BossRoom
+# BossBot
 
 **[Try it live →](https://bossbot.pages.dev)**
 
@@ -9,7 +9,7 @@ BossRoom offers two distinct interfaces:
 1. **Imagine Mode** — A desktop OS-style UI inspired by Claude Imagine, where agents work inside virtual machine windows with artifact previews, workspace dashboards, and a familiar desktop metaphor.
 2. **3D World** — A fully navigable third-person 3D office built with React Three Fiber and Rapier physics, where you walk up to AI agents at their desks, interact face-to-face, and watch teams materialize in real time.
 
-<img width="1536" height="1024" alt="BossRoom" src="https://github.com/user-attachments/assets/0b7f8e0b-9dea-4c15-b636-1c7d94516e6d" />
+<img width="1536" height="1024" alt="BossBot" src="https://github.com/user-attachments/assets/0b7f8e0b-9dea-4c15-b636-1c7d94516e6d" />
 
 ---
 
@@ -64,7 +64,7 @@ BossRoom offers two distinct interfaces:
 ## Architecture
 
 ```
-BossRoom/
+BossBot/
 ├── apps/
 │   ├── game-frontend/     # Next.js 16 + Tailwind v4 + Three.js (R3F) + shadcn/ui
 │   └── game-server/       # Node.js + WebSocket + AI SDK + Composio + Drizzle ORM

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add voice-based agent interaction to BossRoom: push-to-talk (hold T) with Deepgram STT, and agent voice output with Inworld TTS. The existing streaming chat UX is preserved — voice is an alternative input method, and TTS plays on top of the streamed text response.
+Add voice-based agent interaction to BossBot: push-to-talk (hold T) with Deepgram STT, and agent voice output with Inworld TTS. The existing streaming chat UX is preserved — voice is an alternative input method, and TTS plays on top of the streamed text response.
 
 This plan replaces `thoughts/shared/plans/2026-02-14-agentic-voice-interaction.md` with corrected file paths and architecture after the codebase was refactored into split Zustand stores and domain-driven server modules.
 

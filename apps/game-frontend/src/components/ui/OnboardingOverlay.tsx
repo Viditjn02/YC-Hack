@@ -8,7 +8,7 @@ import { useOnboardingSteps } from '@/hooks/useOnboardingSteps';
 
 const STEPS = [
   {
-    text: 'Welcome to BossRoom! Use WASD to walk around your virtual office.',
+    text: 'Welcome to BossBot! Use WASD to walk around your virtual office.',
     hint: 'Try moving around',
   },
   {

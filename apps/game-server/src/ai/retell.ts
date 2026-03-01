@@ -1,6 +1,6 @@
 /**
  * Retell AI phone calling client.
- * Lets BossRoom agents make real-world phone calls autonomously.
+ * Lets BossBot agents make real-world phone calls autonomously.
  *
  * Gracefully disabled if RETELL_API_KEY is not set.
  */

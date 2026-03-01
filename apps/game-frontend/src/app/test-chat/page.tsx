@@ -305,7 +305,7 @@ export default function TestChatPage() {
         <div className="text-center space-y-6">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">
-              BossRoom Test Chat
+              BossBot Test Chat
             </h1>
             <p className="text-muted-foreground">
               Sign in to test AI agent conversations
@@ -331,7 +331,7 @@ export default function TestChatPage() {
         <div className="flex items-center gap-3">
           <Bot className="size-5 text-indigo-400" />
           <h1 className="text-foreground font-semibold text-lg">
-            BossRoom Test Chat
+            BossBot Test Chat
           </h1>
         </div>
         <div className="flex items-center gap-4">

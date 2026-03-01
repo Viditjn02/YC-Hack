@@ -19,7 +19,7 @@ export function LoginPage() {
     <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8 text-center">
         <div>
-          <h1 className="text-5xl font-bold text-white mb-2">BossRoom</h1>
+          <h1 className="text-5xl font-bold text-white mb-2">BossBot</h1>
           <p className="text-indigo-300 text-lg">Agent-first 3D workspace</p>
         </div>
 

@@ -31,7 +31,7 @@ export function createConversationService(deps: {
     const name = displayName ?? 'there';
     switch (agent.id) {
       case 'receptionist':
-        return `Welcome to BossRoom, ${name}! I'm your office concierge. Tell me what you need — a product launch? Sprint planning? Content creation? — and I'll build you a custom team of AI agents right here in your workspace.`;
+        return `Welcome to BossBot, ${name}! I'm your office concierge. Tell me what you need — a product launch? Sprint planning? Content creation? — and I'll build you a custom team of AI agents right here in your workspace.`;
       default:
         return `Hi ${name}! I'm ${agent.name}. How can I help you today?`;
     }

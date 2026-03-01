@@ -1,5 +1,5 @@
 /**
- * WebSocket client for connecting to the BossRoom game server.
+ * WebSocket client for connecting to the BossBot game server.
  * Handles connection, reconnection, and message routing to the Zustand store.
  * Gracefully handles server unavailability without console spam.
  */

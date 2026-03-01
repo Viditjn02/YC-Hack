@@ -5,7 +5,7 @@ import Providers from './providers';
 const sora = Sora({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'BossRoom',
+  title: 'BossBot',
   description: 'Voxel 3D Office World',
 };
 

@@ -50,7 +50,7 @@ open https://developer.visa.com/portal
 
 ### Step 2: Create a VIC Project
 1. Click "Add New Project"
-2. Name: "BossRoom AI Agents"
+2. Name: "BossBot AI Agents"
 3. Select "Visa Intelligent Commerce"
 4. Choose authentication: "XPay Token"
 5. Click "Create Project"

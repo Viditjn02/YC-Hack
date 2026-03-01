@@ -74,7 +74,7 @@ function DashboardContent() {
       {/* Header */}
       <header style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: 14 }}>← Back to BossRoom</a>
+          <a href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: 14 }}>← Back to BossBot</a>
           <span style={{ color: '#334155' }}>|</span>
           <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Activity Dashboard</h1>
           <span style={{
@@ -230,7 +230,7 @@ function NoDashboard() {
         <p style={{ color: '#94a3b8', lineHeight: 1.6, fontSize: 14 }}>
           Set <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4 }}>NEXT_PUBLIC_CONVEX_URL</code> to enable the real-time activity dashboard powered by Convex.
         </p>
-        <a href="/" style={{ color: '#8b5cf6', textDecoration: 'none', fontSize: 14, marginTop: 16, display: 'inline-block' }}>← Back to BossRoom</a>
+        <a href="/" style={{ color: '#8b5cf6', textDecoration: 'none', fontSize: 14, marginTop: 16, display: 'inline-block' }}>← Back to BossBot</a>
       </div>
     </div>
   );

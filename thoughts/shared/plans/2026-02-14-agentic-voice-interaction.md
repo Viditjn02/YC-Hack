@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add voice-based agent interaction to BossRoom using:
+Add voice-based agent interaction to BossBot using:
 - Push-to-talk (hold `T`) with Deepgram STT
 - Agent voice output with Inworld TTS
 - Task delegation UX: acknowledge -> working -> result-ready indicator -> view result

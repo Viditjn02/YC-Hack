@@ -11,7 +11,7 @@ You're logged in! Here's exactly what to do next:
 ### 2. Fill in Project Details
 
 ```
-Project Name: BossRoom AI Agents
+Project Name: BossBot AI Agents
 Description: AI agent payment integration for autonomous commerce
 ```
 

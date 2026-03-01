@@ -17,7 +17,7 @@ export function handleRetellWebSocket(ws: WebSocket, callId: string): void {
   // dashboard test or inbound call — use a generic fallback.
   const callInfo = getActiveCall(callId) ?? {
     agentId: 'retell-test',
-    agentName: 'BossRoom Agent',
+    agentName: 'BossBot Agent',
     task: 'Have a helpful conversation with whoever is on the line',
     context: 'This is a test or inbound call',
     systemPrompt: '',
@@ -28,7 +28,7 @@ export function handleRetellWebSocket(ws: WebSocket, callId: string): void {
   log.info(`[retell] Call ${callId} connected — agent ${callInfo.agentName} on task: ${callInfo.task}`);
 
   // Build the phone-call system prompt
-  const basePrompt = callInfo.systemPrompt || 'You are a helpful AI assistant from BossRoom.';
+  const basePrompt = callInfo.systemPrompt || 'You are a helpful AI assistant from BossBot.';
   const phoneSystemPrompt = `${basePrompt}
 
 <phone_call>

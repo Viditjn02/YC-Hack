@@ -57,7 +57,7 @@ export function ModeTransition() {
             {isToGame ? 'Game Mode' : 'Imagine'}
           </div>
           <div className={`text-sm mt-3 opacity-60 ${isToGame ? 'text-white' : 'text-[#2D2D2D]'}`}>
-            {isToGame ? 'Entering BossRoom...' : 'Professional workspace'}
+            {isToGame ? 'Entering BossBot...' : 'Professional workspace'}
           </div>
         </div>
       </div>

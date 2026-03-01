@@ -42,7 +42,7 @@ resource "google_identity_platform_default_supported_idp_config" "google" {
 resource "google_firebase_web_app" "default" {
   provider     = google-beta
   project      = var.project_id
-  display_name = "BossRoom Web App"
+  display_name = "BossBot Web App"
 
   depends_on = [google_firebase_project.default]
 }

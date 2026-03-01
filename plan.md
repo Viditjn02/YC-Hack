@@ -53,7 +53,7 @@
 
 #### Quick Start
 ```bash
-git clone <repo> && cd BossRoom
+git clone <repo> && cd BossBot
 npm install
 cp .env.example .env          # fill in API keys
 npm run dev                    # frontend :3000 + server :8080
@@ -204,7 +204,7 @@ scripts/                generate-env.mjs, health-check.mjs
   Y Combinator – Build an Iconic YC Company
 - **How we match:** Reimagining Asana (founded 2008). "What if project management were invented in 2026? Instead of humans moving tickets on a kanban board, you describe what you need and AI agents self-organize into a team that executes the work."
 - **Key proof:** Deployed on Cloudflare Pages + Cloud Run. Full README with project description. Complete user journey from sign-in to workspace completion.
-- **Demo moment:** Side-by-side: Asana's task board vs. BossRoom where you describe a task and agents materialize to do it
+- **Demo moment:** Side-by-side: Asana's task board vs. BossBot where you describe a task and agents materialize to do it
 
   Decagon – Best Conversational Assistant
 - **How we match:** All conversations persisted to DB and restored on reconnect. Each dynamic agent has a unique personality, name, and conversation style. Agents remember context within workspaces. Voice input (STT) and output (TTS) for natural conversation.

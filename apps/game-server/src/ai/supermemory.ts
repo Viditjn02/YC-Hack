@@ -1,5 +1,5 @@
 /**
- * Supermemory — persistent long-term memory for BossRoom agents.
+ * Supermemory — persistent long-term memory for BossBot agents.
  * Agents remember user preferences, past tasks, and facts across sessions.
  * Gracefully disabled if SUPERMEMORY_API_KEY is not set.
  */

@@ -82,7 +82,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('BossRoom Game Server');
+  res.end('BossBot Game Server');
 });
 
 const wss = new WebSocketServer({ server });
@@ -363,5 +363,5 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
 }
 
 server.listen(PORT, () => {
-  log.info(`BossRoom game server on ws://localhost:${PORT}`);
+  log.info(`BossBot game server on ws://localhost:${PORT}`);
 });

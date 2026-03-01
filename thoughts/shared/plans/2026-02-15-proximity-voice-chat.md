@@ -6,7 +6,7 @@ Add push-to-talk voice chat between players using PeerJS (WebRTC). When two play
 
 ## Why
 
-- BossRoom is a multiplayer coworking space but players can't communicate with each other
+- BossBot is a multiplayer coworking space but players can't communicate with each other
 - Voice is more natural than text for a 3D spatial environment
 - Reuses the existing T key push-to-talk pattern already established for agents
 

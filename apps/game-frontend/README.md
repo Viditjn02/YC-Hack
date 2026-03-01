@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-BossRoom uses two data fetching strategies:
+BossBot uses two data fetching strategies:
 
 | Concern | Transport | State Manager | Example |
 |---|---|---|---|

@@ -1,4 +1,4 @@
-# BossRoom — Devpost Submission
+# BossBot — Devpost Submission
 
 > A multiplayer 3D virtual office where AI agents are your coworkers. Walk up, speak, and watch them send real emails, book meetings, search products, and process payments — all in a living game world. Built in 36 hours. 100M+ tokens burned.
 
@@ -16,7 +16,7 @@ The result is something we honestly didn't think was possible in 36 hours: a ful
 
 ## What it does
 
-BossRoom is a multiplayer 3D virtual office where AI agents are your coworkers. You navigate a third-person character through a physics-enabled world, walk up to agents at their desks, and delegate real tasks by typing or by holding a push-to-talk key and speaking naturally.
+BossBot is a multiplayer 3D virtual office where AI agents are your coworkers. You navigate a third-person character through a physics-enabled world, walk up to agents at their desks, and delegate real tasks by typing or by holding a push-to-talk key and speaking naturally.
 
 These agents don't just chat. They execute. They send actual emails through Gmail, create real tickets in Linear, book real meetings on Google Calendar, search real products across retailers, and process real payments through Visa.
 
@@ -84,7 +84,7 @@ Terraform saves hackathons. Provisioning Cloud Run, Cloud SQL, Firebase Auth, Cl
 
 We also learned a ton about WebRTC peer-to-peer audio, HRTF spatial panning, chunk-based terrain generation, Vercel AI SDK multi-step tool calling, Composio OAuth scoping, Visa MCP integration, and how to wire up multi-model LLM systems with live tool integrations under extreme time pressure.
 
-## What's next for BossRoom
+## What's next for BossBot
 
 Smarter model routing. All agents currently use Gemini 3 Flash. We want automatic model selection that routes research tasks to Claude, fast lookups to GPT-4o, and creative work to the best model for the job. The Vercel AI Gateway already supports this; we just need the routing logic.
 
@@ -96,7 +96,7 @@ More commerce. The Visa MCP integration opens the door to full in-world shopping
 
 More integrations. With MCP support built in and Composio already providing Gmail, Calendar, Linear, Stripe, and SerpAPI, we want to connect to every tool ecosystem out there. Slack, Notion, GitHub, Figma, Jira.
 
-Long term, we believe every company will have fleets of AI agents. Current interfaces are chat boxes and dashboards. BossRoom is the operating system for working with them — and it's fun.
+Long term, we believe every company will have fleets of AI agents. Current interfaces are chat boxes and dashboards. BossBot is the operating system for working with them — and it's fun.
 
 ## Built With
 

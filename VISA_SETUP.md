@@ -1,6 +1,6 @@
 # Visa Intelligent Commerce Setup Guide
 
-This guide walks you through obtaining all the necessary credentials to enable Visa Intelligent Commerce in BossRoom.
+This guide walks you through obtaining all the necessary credentials to enable Visa Intelligent Commerce in BossBot.
 
 ## Overview
 
@@ -22,7 +22,7 @@ The Visa packages are already installed in the `vendor/visa-mcp` directory and l
 
 1. Log in to your [Visa Developer Dashboard](https://developer.visa.com/portal)
 2. Click **"Add New Project"**
-3. Enter a project name (e.g., "BossRoom AI Agents")
+3. Enter a project name (e.g., "BossBot AI Agents")
 4. Add a description
 5. Select **"Visa Intelligent Commerce"** from the list of APIs
 6. Choose your authentication method: **"XPay Token"** (recommended for getting started)
@@ -105,7 +105,7 @@ Add the contents of `jwt_private_pkcs8.pem` to `.env` as `USER_SIGNING_PRIVATE_K
 Check that the Visa packages are properly installed:
 
 ```bash
-# From BossRoom root directory
+# From BossBot root directory
 npm list @visa/mcp-client @visa/token-manager @visa/api-client
 ```
 
@@ -195,7 +195,7 @@ Mark off each credential as you add it to `.env`:
 ## Support
 
 - **Visa Developer Support**: Available through the Visa Developer Portal
-- **BossRoom Issues**: Check the game server logs for detailed error messages
+- **BossBot Issues**: Check the game server logs for detailed error messages
 - **Vendor Package Docs**: See `vendor/visa-mcp/README.md` for detailed package documentation
 
 ## Next Steps

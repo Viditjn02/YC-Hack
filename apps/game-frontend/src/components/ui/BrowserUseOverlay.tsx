@@ -31,7 +31,7 @@ export function BrowserUseOverlay() {
               {session.agentName} is browsing the web
             </p>
             <p className="text-xs text-white/40 mt-0.5">
-              Browser Use is running — live browser session active
+              Browser Use is running
             </p>
           </div>
 

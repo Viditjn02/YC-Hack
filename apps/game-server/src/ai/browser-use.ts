@@ -50,7 +50,7 @@ async function apiRequest<T>(method: string, path: string, body?: unknown): Prom
   const res = await fetch(url, {
     method,
     headers: {
-      'X-Browser-Use-API-Key': env.BROWSER_USE_API_KEY,
+      'X-Browser-Use-API-Key': env.BROWSER_USE_API_KEY ?? '',
       'Content-Type': 'application/json',
     },
     ...(body ? { body: JSON.stringify(body) } : {}),

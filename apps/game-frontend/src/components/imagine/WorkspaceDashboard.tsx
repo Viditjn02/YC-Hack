@@ -204,11 +204,12 @@ function AgentDetailPanel({ agentId, onClose }: { agentId: string; onClose: () =
               </div>
             );
           }
+          if (!('content' in msg) || !msg.content) return null;
           return (
             <div key={i} className={`${msg.role === 'user' ? 'ml-8' : 'mr-4'}`}>
               <div className={`rounded-xl px-4 py-3 ${msg.role === 'user' ? 'bg-indigo-600/30 text-white' : 'bg-white/[0.05] text-white/80'}`}>
                 <div className="text-[12px] leading-relaxed">
-                  <Markdown>{msg.content}</Markdown>
+                  <Markdown content={msg.content} />
                 </div>
               </div>
             </div>
@@ -218,7 +219,7 @@ function AgentDetailPanel({ agentId, onClose }: { agentId: string; onClose: () =
           <div className="mr-4">
             <div className="rounded-xl px-4 py-3 bg-white/[0.05] text-white/80">
               <div className="text-[12px] leading-relaxed">
-                <Markdown>{streamingText}</Markdown>
+                <Markdown content={streamingText} />
                 <span className="animate-pulse text-indigo-400">|</span>
               </div>
             </div>

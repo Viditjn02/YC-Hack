@@ -14,35 +14,6 @@ export function handleComposioAuthRoutes(req: IncomingMessage, res: ServerRespon
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
   const path = url.pathname;
 
-  if (path === '/auth/composio/url' && req.method === 'GET') {
-    const app = url.searchParams.get('app');
-    const userId = url.searchParams.get('userId');
-
-    if (!app || !userId) {
-      jsonResponse(res, 400, { error: 'Missing required params: app, userId' });
-      return true;
-    }
-
-    if (!composio) {
-      jsonResponse(res, 503, { error: 'Composio not configured' });
-      return true;
-    }
-
-    (async () => {
-      try {
-        const connRequest = await composio.connectedAccounts.initiate(userId, app, {
-          callbackUrl: url.searchParams.get('callbackUrl') ?? undefined,
-        });
-        jsonResponse(res, 200, { redirectUrl: connRequest.redirectUrl });
-      } catch (err) {
-        log.error('Composio auth initiate error:', err);
-        jsonResponse(res, 500, { error: 'Failed to initiate auth' });
-      }
-    })();
-
-    return true;
-  }
-
   if (path === '/auth/composio/status' && req.method === 'GET') {
     const userId = url.searchParams.get('userId');
 

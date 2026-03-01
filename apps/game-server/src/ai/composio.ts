@@ -8,7 +8,7 @@ const COMPOSIO_API_KEY = process.env['COMPOSIO_API_KEY'];
 let composio: Composio<VercelProvider> | null = null;
 
 if (COMPOSIO_API_KEY) {
-  composio = new Composio({ provider: new VercelProvider() });
+  composio = new Composio({ apiKey: COMPOSIO_API_KEY, provider: new VercelProvider() });
   log.info('Composio initialized');
 } else {
   log.warn('COMPOSIO_API_KEY not set — Composio tools disabled');

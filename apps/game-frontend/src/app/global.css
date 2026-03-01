@@ -20,17 +20,6 @@
   --color-input: oklch(0.274 0.006 286.033);
   --color-ring: oklch(0.871 0.006 286.029);
   --radius: 0.625rem;
-
-  /* ── Imagine Mode Design Tokens ─── */
-  --color-imagine-canvas-bg: #C5C8D8;
-  --color-imagine-canvas-text: #2D2D2D;
-  --color-imagine-canvas-text-sec: #6B6B6B;
-  --color-imagine-canvas-text-dim: #9B9B9B;
-  --color-imagine-window-warm: #F5F0E8;
-  --color-imagine-window-alt: #EDE8DC;
-  --color-imagine-terracotta: #C4654A;
-  --color-imagine-terracotta-hover: #D4755A;
-  --color-imagine-divider: rgba(0, 0, 0, 0.08);
 }
 
 html,
@@ -61,30 +50,4 @@ body {
   to {
     opacity: 0;
   }
-}
-
-/* ── Imagine Mode Animations ─── */
-@keyframes imaginePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-@keyframes imagineSlideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes imagineFadeScale {
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes modeTransitionWipe {
-  from { clip-path: circle(0% at 50% 50%); }
-  to { clip-path: circle(150% at 50% 50%); }
-}
-
-@keyframes modeTransitionFadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
 }

@@ -26,6 +26,7 @@ async function initVisaClient() {
   }
 
   try {
+    // @ts-expect-error — @visa/mcp-client is optional (vendor/visa-mcp). Build succeeds without it.
     const { createVisaMcpClient } = await import('@visa/mcp-client');
     visaClient = await createVisaMcpClient();
     visaReady = true;

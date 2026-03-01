@@ -1,7 +1,7 @@
 /** Canvas root: R3F canvas and HTML overlay wiring. */
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
@@ -19,6 +19,8 @@ import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
 import { WorkspaceBar } from '../ui/WorkspaceBar';
+import { useAuthStore } from '@/stores/authStore';
+import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
 
 interface GameProps {
@@ -26,7 +28,28 @@ interface GameProps {
 }
 
 export function Game({ user }: GameProps) {
-  // WebSocket is initialized by ModeRouter — shared across modes
+  useEffect(() => {
+    let cancelled = false;
+    async function init() {
+      try {
+        const token = await useAuthStore.getState().getToken();
+        if (!cancelled) {
+          initWebSocket(
+            user.displayName ?? user.email,
+            token,
+            useAuthStore.getState().getToken,
+            user.uid,
+          );
+        }
+      } catch {
+        // Auth token fetch can fail if not yet signed in — game still renders
+      }
+    }
+    init();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   return (
     <div className="w-screen h-screen relative">

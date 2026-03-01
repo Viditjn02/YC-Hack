@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/stores/authStore';
 import { LoginPage } from '@/components/auth/LoginPage';
-import { ModeRouter } from '@/components/ModeRouter';
+import { Game } from '@/components/game/Game';
 
 export default function Home() {
   const user = useAuthStore((s) => s.user);
@@ -20,5 +20,5 @@ export default function Home() {
     return <LoginPage />;
   }
 
-  return <ModeRouter user={user} />;
+  return <Game user={user} />;
 }

@@ -6,7 +6,6 @@ import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { gameSocket } from '@/lib/websocket';
 import { statusColors, statusLabels } from '@/data/agents';
-import { ModeToggle } from '@/components/imagine/ModeToggle';
 
 export function HUD() {
   const connected = useWorldStore((s) => s.connected);
@@ -40,9 +39,6 @@ export function HUD() {
           <span className="text-[10px] text-white/50">
             {connected ? 'Online' : 'Offline'}
           </span>
-        </div>
-        <div className="pointer-events-auto">
-          <ModeToggle />
         </div>
         {user && (
           <div className="flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5 pointer-events-auto">

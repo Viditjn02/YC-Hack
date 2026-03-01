@@ -1,0 +1,26 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO: bossroom-game-server
+    AWS_DEFAULT_REGION: eu-west-1
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - ECR_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPO
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build --platform linux/amd64 -t $ECR_REPO:latest -f apps/game-server/Dockerfile .
+      - docker tag $ECR_REPO:latest $ECR_URI:latest
+      - docker tag $ECR_REPO:latest $ECR_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+  post_build:
+    commands:
+      - echo Pushing to ECR...
+      - docker push $ECR_URI:latest
+      - docker push $ECR_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo Build completed on $(date)

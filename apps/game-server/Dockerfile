@@ -9,7 +9,7 @@ COPY apps/game-frontend/package.json apps/game-frontend/
 COPY libs/shared-types/package.json libs/shared-types/
 COPY libs/shared-utils/package.json libs/shared-utils/
 
-RUN npm ci
+RUN npm install
 
 COPY tsconfig.base.json tsconfig.json nx.json ./
 COPY apps/game-server/ apps/game-server/
@@ -28,7 +28,7 @@ COPY apps/game-frontend/package.json apps/game-frontend/
 COPY libs/shared-types/package.json libs/shared-types/
 COPY libs/shared-utils/package.json libs/shared-utils/
 
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy built server + workspace lib outputs
 COPY --from=builder /app/apps/game-server/dist/ apps/game-server/dist/

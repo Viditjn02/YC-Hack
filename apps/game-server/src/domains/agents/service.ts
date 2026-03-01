@@ -19,6 +19,8 @@ import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool
 import { createPaymentTools } from './paymentTools.js';
 import { createBrowseWebTool } from './browseWebTool.js';
 import { createPhoneCallTool } from './phoneTools.js';
+import { getMemoryTools } from '../../ai/supermemory.js';
+import { logActivity } from '../../ai/convex-logger.js';
 import { env } from '../../env.js';
 
 interface AgentServiceDeps {
@@ -62,6 +64,7 @@ export function createAgentService(deps: AgentServiceDeps) {
     }
 
     completedWorkspaces.add(workspaceId);
+    logActivity({ userId: playerId, workspaceId, agentName: leadAgent.name, eventType: 'workspace_completed', detail: 'All agents finished — workspace complete' });
     // Persist workspace status to DB
     void workspaceRepo.updateWorkspaceStatus(workspaceId, 'completed').catch(err =>
       log.error(`[workspace] DB status update failed for ${workspaceId}:`, err)
@@ -306,7 +309,8 @@ No other text.`,
       });
       const workerComposioTools = await getComposioTools(playerId);
       const workerMcpTools = await mcpManager.getAllTools();
-      const workerTools = { ...workerComposioTools, ...workerMcpTools, ...workerSkillTools };
+      const workerMemoryTools = getMemoryTools(playerId);
+      const workerTools = { ...workerComposioTools, ...workerMcpTools, ...workerSkillTools, ...workerMemoryTools };
 
       const workerScratchpadTools = createScratchpadTools({
         scratchpadService,
@@ -377,6 +381,7 @@ No other text.`,
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
             log.info(`[tool-call] ${targetAgent.name} (delegated) calling: ${chunk.toolName}${chunk.toolName === 'browse_web' ? ' *** BROWSER-USE INVOKED ***' : ''}`);
+            logActivity({ userId: playerId, workspaceId: targetAgent.workspaceId, agentName: targetAgent.name, eventType: 'tool_used', detail: chunk.toolName });
             playerService.send(ws, {
               type: 'agent:toolExecution',
               payload: { agentId: targetAgent.agentId, toolName: chunk.toolName, status: 'started' },
@@ -579,6 +584,7 @@ No other text.`,
       setTimeout(async () => {
         try {
           log.info(`[workspace] Auto-kickoff: ${leadAgent.name} starting on task`);
+          logActivity({ userId: playerId, workspaceId: leadAgent.workspaceId, agentName: leadAgent.name, eventType: 'task_started', detail: leadAgent.initialTask!.slice(0, 200) });
           await handleDynamicAgentMessage(
             playerId,
             leadAgent.agentId,
@@ -634,8 +640,9 @@ No other text.`,
 
       const composioTools = await getComposioTools(playerId);
       const mcpTools = await mcpManager.getAllTools();
+      const memoryTools = getMemoryTools(playerId);
 
-      let tools = { ...composioTools, ...mcpTools, ...agentSkillToolSet };
+      let tools = { ...composioTools, ...mcpTools, ...agentSkillToolSet, ...memoryTools };
 
       const scratchpadTools = createScratchpadTools({
         scratchpadService,
@@ -731,6 +738,7 @@ No other text.`,
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
             log.info(`[tool-call] ${dynamicAgent.name} calling: ${chunk.toolName}${chunk.toolName === 'browse_web' ? ' *** BROWSER-USE INVOKED ***' : ''}`);
+            logActivity({ userId: playerId, workspaceId: dynamicAgent.workspaceId, agentName: dynamicAgent.name, eventType: 'tool_used', detail: chunk.toolName });
             playerService.send(ws, {
               type: 'agent:toolExecution',
               payload: { agentId, toolName: chunk.toolName, status: 'started' },
@@ -740,7 +748,10 @@ No other text.`,
         onStepFinish: ({ toolCalls, toolResults }) => {
           for (let i = 0; i < toolCalls.length; i++) {
             const tc = toolCalls[i];
-            if (tc.toolName === 'finish_task') calledFinishTask = true;
+            if (tc.toolName === 'finish_task') {
+              calledFinishTask = true;
+              logActivity({ userId: playerId, workspaceId: dynamicAgent.workspaceId, agentName: dynamicAgent.name, eventType: 'task_completed', detail: 'Agent called finish_task' });
+            }
             if (tc.toolName === 'write_scratchpad') calledWriteScratchpad = true;
             const tr = toolResults[i];
             const failed = tr && typeof tr === 'object' && 'error' in tr;

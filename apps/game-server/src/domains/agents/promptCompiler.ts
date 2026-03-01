@@ -118,7 +118,17 @@ If your task involves web research, ALWAYS use browse_web instead of relying on 
 </browser_use>`);
   }
 
-  // --- 4b. Phone calling (if available) ---
+  // --- 4b. Long-term memory (Supermemory) ---
+  parts.push(
+`<memory>
+You have long-term memory via searchMemories and addMemory tools (if available).
+- At the START of conversations, call searchMemories to recall what you know about this user
+- After learning important facts (preferences, decisions, completed tasks), call addMemory to save them
+- Memory persists across sessions — use it to be more helpful over time
+- Don't save trivial info — only meaningful facts about the user
+</memory>`);
+
+  // --- 4c. Phone calling (if available) ---
   parts.push(
 `<phone>
 You can make real phone calls using the make_phone_call tool (if available).

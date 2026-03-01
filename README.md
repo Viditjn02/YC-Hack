@@ -1,5 +1,9 @@
 # BossBot
 
+<p align="center">
+  <img src="docs/images/bossbot-hero.jpg" alt="BossBot — AI agents in a virtual office" width="700" />
+</p>
+
 **BossBot** is a virtual office where AI agents are your coworkers, available in both immersive 3D (inspired by **Minecraft**) and streamlined 2D (like **Claude Imagine**!). Navigate a physics-enabled workspace or use a desktop-style interface, speaking by voice or text while agents execute real tasks: sending emails in Gmail, scheduling meetings on Google Calendar, filing tickets in Linear, and researching the web using Browser Use! 
 
 A Receptionist agent dynamically assembles teams of 3–12 specialists on demand. Built with Next.js, React Three Fiber, and Tailwind on the frontend; Node.js, WebSockets, and the Vercel AI SDK on the backend; deployed on GCP Cloud Run and Cloudflare Pages. 
@@ -22,6 +26,10 @@ The result is something we honestly didn't think was possible in 36 hours: a ful
 
 ## What it does
 
+<p align="center">
+  <img src="docs/images/bossbot-imagine.png" alt="BossBot Imagine Mode — 2D workspace with sticky notes and prompt cards" width="700" />
+</p>
+
 BossBot is a **multiplayer 3D virtual office** where AI agents are your coworkers. You navigate a third-person character through a physics-enabled world, walk up to agents at their desks, and delegate real tasks — by typing or by holding a push-to-talk key and speaking naturally.
 
 **These agents don't just chat. They execute.** They send actual emails through Gmail, create real tickets in Linear, book real meetings on Google Calendar, search real products across retailers, and process real payments through Visa.
@@ -41,6 +49,10 @@ Walk up to the Shopkeeper and say "find me wireless headphones under $50." It se
 Talk to agents using push-to-talk — your voice is transcribed in real-time by Deepgram Nova-3 via streaming WebSocket. Agents respond with synthesized voice (Inworld TTS) played through **HRTF spatial audio** — their voice gets louder as you walk closer and pans left/right based on their 3D position. Players can also voice chat with each other using **proximity-based P2P spatial audio** over WebRTC — hold T near another player and their voice fades in with distance, just like real life. Two completely independent spatial audio pipelines sharing a single AudioContext.
 
 ### The World
+
+<p align="center">
+  <img src="docs/images/bossbot-game.png" alt="BossBot Game Mode — 3D virtual office with AI agents" width="700" />
+</p>
 
 The office sits on **procedurally generated terrain** using simplex noise with Minecraft-style quantized heights, vertex-colored grass and earth, flowers and decorations — chunk-loaded around the player with LOD falloff. Walk far enough past the office walls and you'll discover a hidden Stanford campus model surrounding the building. 13 selectable avatar models with live 3D previews. A Roblox-style third-person camera with right-click orbit and scroll zoom. Background music with a track selector. A GTA-style onboarding tutorial. Bloom and vignette post-processing. It's a game.
 

@@ -36,10 +36,8 @@ class GameWebSocket {
     const wsUrl = this.getWebSocketUrl();
 
     if (isProduction && (!wsUrl || wsUrl.startsWith('ws://'))) {
-      // HTTPS page needs wss:// server - if not configured, disable
-      this.url = '';
-      this.disabled = true;
-      console.log('[WS] Production mode: no secure WebSocket server configured. Running offline.');
+      // HTTPS page needs wss:// — use Cloud Run backend as default
+      this.url = 'wss://bossbot-game-server-20469321404.us-central1.run.app';
     } else if (wsUrl) {
       this.url = wsUrl;
     } else {

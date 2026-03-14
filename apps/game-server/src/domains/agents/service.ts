@@ -21,7 +21,10 @@ import { createBrowseWebTool } from './browseWebTool.js';
 import { createPhoneCallTool } from './phoneTools.js';
 import { getMemoryTools } from '../../ai/supermemory.js';
 import { logActivity } from '../../ai/convex-logger.js';
+import { detectPromptInjection, classifyWithLLM, wrapUserContent, checkRateLimit, scanOutput, createConcurrencyGuard } from '../../ai/guardrails.js';
 import { env } from '../../env.js';
+
+const concurrency = createConcurrencyGuard();
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -377,6 +380,7 @@ No other text.`,
         system: targetAgent.systemPrompt,
         messages: [{ role: 'user' as const, content: taskDescription }],
         tools: workerToolsFinal,
+        maxOutputTokens: 4096,
         stopWhen: stepCountIs(25),
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
@@ -453,6 +457,7 @@ No other text.`,
               { role: 'user' as const, content: '[System] The tools are not connected right now. That is OK. Do NOT ask the user to connect anything. Instead, do your work WITHOUT those tools. Write your complete deliverable (code, analysis, plan, design) directly to the scratchpad using write_scratchpad. Then call finish_task. GO.' },
             ],
             tools: workerToolsFinal,
+            maxOutputTokens: 4096,
             stopWhen: stepCountIs(25),
             onChunk: ({ chunk }) => {
               if (chunk.type === 'tool-call') {
@@ -617,6 +622,51 @@ No other text.`,
       return;
     }
 
+    // --- Guardrail: Prompt injection detection (skip for system nudges/delegations) ---
+    let safeContent = content;
+    if (!isNudge) {
+      const injection = detectPromptInjection(content);
+      if (injection.flagged) {
+        log.warn(`[guardrails] Injection detected from ${playerId} → ${agentId}: patterns=[${injection.patterns.join(',')}] severity=${injection.severity}`);
+
+        // Layer 2: LLM-as-judge for flagged messages
+        let llmResult = undefined;
+        if (injection.severity !== 'none') {
+          llmResult = await classifyWithLLM(content);
+          log.info(`[guardrails] LLM classifier: isInjection=${llmResult.isInjection} confidence=${llmResult.confidence} reason=${llmResult.reason}`);
+        }
+
+        // Broadcast security event to frontend
+        playerService.send(ws, {
+          type: 'guardrail:event',
+          payload: {
+            agentId,
+            agentName: dynamicAgent.name,
+            inputSnippet: content.slice(0, 100),
+            patterns: injection.patterns,
+            severity: injection.severity as 'low' | 'high',
+            ...(llmResult ? { llmClassification: llmResult } : {}),
+            action: (injection.severity === 'high' && llmResult?.isInjection) ? 'blocked' as const : 'sanitized' as const,
+          },
+        });
+
+        // High severity + LLM confirms → block entirely
+        if (injection.severity === 'high' && llmResult?.isInjection) {
+          playerService.send(ws, {
+            type: 'agent:chatMessage',
+            payload: { agentId, role: 'assistant', content: "i can't process that message — it looks like it's trying to manipulate my instructions. try rephrasing what you need?" },
+          });
+          agentRepo.setStatus(agentId, 'idle');
+          broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+          return;
+        }
+
+        safeContent = wrapUserContent(injection.sanitized);
+      } else {
+        safeContent = wrapUserContent(content);
+      }
+    }
+
     // Track user message in chat history
     agentRepo.appendChatHistory(agentId, 'user', content);
 
@@ -733,7 +783,8 @@ No other text.`,
       const result = streamText({
         model,
         system: dynamicAgent.systemPrompt,
-        messages: [{ role: 'user' as const, content }],
+        messages: [{ role: 'user' as const, content: safeContent }],
+        maxOutputTokens: 4096,
         ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
@@ -802,6 +853,15 @@ No other text.`,
         log.info(`[agent] ${dynamicAgent.name} response (${fullResponse.length} chars): ${fullResponse.slice(0, 200)}${fullResponse.length > 200 ? '...' : ''}`);
       } else {
         log.warn(`[agent] ${dynamicAgent.name} produced empty text response (tool-only turn)`);
+      }
+
+      // --- Guardrail: Output scanning ---
+      if (fullResponse) {
+        const outputScan = scanOutput(fullResponse, dynamicAgent.systemPrompt);
+        if (!outputScan.clean) {
+          log.warn(`[guardrails] Output scan issues for ${dynamicAgent.name}: ${outputScan.issues.join(', ')}`);
+          fullResponse = outputScan.redacted;
+        }
       }
 
       // Track assistant response in chat history
@@ -922,6 +982,48 @@ No other text.`,
     const agent = agentRepo.get(agentId);
     if (!agent) return;
 
+    // --- Guardrail: Prompt injection detection (skip for system-triggered messages) ---
+    let safeContent = content;
+    if (!options?.hidden) {
+      const injection = detectPromptInjection(content);
+      if (injection.flagged) {
+        log.warn(`[guardrails] Injection detected from ${playerId} → ${agentId}: patterns=[${injection.patterns.join(',')}] severity=${injection.severity}`);
+
+        let llmResult = undefined;
+        if (injection.severity !== 'none') {
+          llmResult = await classifyWithLLM(content);
+          log.info(`[guardrails] LLM classifier: isInjection=${llmResult.isInjection} confidence=${llmResult.confidence} reason=${llmResult.reason}`);
+        }
+
+        playerService.send(ws, {
+          type: 'guardrail:event',
+          payload: {
+            agentId,
+            agentName: agent.name,
+            inputSnippet: content.slice(0, 100),
+            patterns: injection.patterns,
+            severity: injection.severity as 'low' | 'high',
+            ...(llmResult ? { llmClassification: llmResult } : {}),
+            action: (injection.severity === 'high' && llmResult?.isInjection) ? 'blocked' as const : 'sanitized' as const,
+          },
+        });
+
+        if (injection.severity === 'high' && llmResult?.isInjection) {
+          playerService.send(ws, {
+            type: 'agent:chatMessage',
+            payload: { agentId, role: 'assistant', content: "i can't process that message — it looks like it's trying to manipulate my instructions. try rephrasing what you need?" },
+          });
+          agentRepo.setStatus(agentId, 'idle');
+          broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+          return;
+        }
+
+        safeContent = wrapUserContent(injection.sanitized);
+      } else {
+        safeContent = wrapUserContent(content);
+      }
+    }
+
     // Find or create conversation
     let conv = conversationService.getConversationForPlayer(playerId, agentId);
 
@@ -970,13 +1072,14 @@ No other text.`,
       // Build AI SDK messages
       const aiMessages = [
         ...conv.aiMessages,
-        { role: 'user' as const, content },
+        { role: 'user' as const, content: safeContent },
       ];
 
       const result = streamText({
         model,
         system: agent.systemPrompt,
         messages: aiMessages,
+        maxOutputTokens: 4096,
         ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
@@ -1047,6 +1150,15 @@ No other text.`,
         await conversationService.persistToDb(conv.id);
       } catch (err) {
         log.error(`[agent] DB save failed for conversation ${conv.id}:`, err);
+      }
+
+      // --- Guardrail: Output scanning ---
+      if (fullResponse) {
+        const outputScan = scanOutput(fullResponse, agent.systemPrompt);
+        if (!outputScan.clean) {
+          log.warn(`[guardrails] Output scan issues for ${agentId}: ${outputScan.issues.join(', ')}`);
+          fullResponse = outputScan.redacted;
+        }
       }
 
       // Log first 200 chars of response for debugging
@@ -1179,6 +1291,32 @@ No other text.`,
       ws: WebSocket,
       broadcastFn: (msg: ServerMessage) => void,
     ) {
+      // --- Guardrail: Rate limiting ---
+      const rateCheck = checkRateLimit(playerId);
+      if (!rateCheck.allowed) {
+        log.warn(`[guardrails] Rate limit hit for ${playerId} (0 remaining, reset in ${rateCheck.resetMs}ms)`);
+        playerService.send(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId, role: 'assistant', content: "you're sending messages too fast — give me a sec and try again" },
+        });
+        playerService.send(ws, {
+          type: 'guardrail:event',
+          payload: { agentId, agentName: agentRepo.get(agentId)?.name ?? agentId, inputSnippet: content.slice(0, 100), patterns: ['rate_limit'], severity: 'low' as const, action: 'rate_limited' as const },
+        });
+        return;
+      }
+
+      // --- Guardrail: Concurrency guard ---
+      if (!concurrency.acquire(playerId, agentId)) {
+        const activeAgent = concurrency.getActiveAgent(playerId);
+        const activeName = activeAgent ? (agentRepo.get(activeAgent)?.name ?? activeAgent) : 'another agent';
+        playerService.send(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId, role: 'assistant', content: `you're already talking to ${activeName} — finish that conversation first` },
+        });
+        return;
+      }
+
       // Check if this is a dynamic agent
       const dynamicAgent = agentRepo.getDynamic(agentId);
       if (dynamicAgent) {
@@ -1190,6 +1328,7 @@ No other text.`,
     },
 
     stopInteraction(playerId: string, agentId: string) {
+      concurrency.release(playerId);
       // Don't reset to idle if the agent is actively working (e.g. delegation in progress)
       const currentStatus = agentRepo.getStatus(agentId);
       if (currentStatus === 'working' || currentStatus === 'thinking') return;

@@ -8,11 +8,11 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('player:join'), payload: z.object({ username: z.string(), token: z.string() }) }),
   z.object({ type: z.literal('player:move'), payload: z.object({ position: positionSchema, rotation: z.number(), animation: z.string() }) }),
   z.object({ type: z.literal('agent:interact'), payload: z.object({ agentId: z.string() }) }),
-  z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string(), inputMode: z.enum(['voice', 'text']).default('text'), purchaseMode: z.enum(['approval', 'autonomous']).optional(), purchaseBudget: z.number().optional() }) }),
+  z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string().max(10000), inputMode: z.enum(['voice', 'text']).default('text'), purchaseMode: z.enum(['approval', 'autonomous']).optional(), purchaseBudget: z.number().optional() }) }),
   z.object({ type: z.literal('agent:stopInteract'), payload: z.object({ agentId: z.string() }) }),
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string().optional(), voiceId: z.string().optional() }) }),
   z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
-  z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string() }) }),
+  z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string().max(2000) }) }),
   z.object({ type: z.literal('workspace:subscribe'), payload: z.object({ workspaceId: z.string() }) }),
   z.object({ type: z.literal('workspace:archive'), payload: z.object({ workspaceId: z.string() }) }),
   z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
@@ -167,6 +167,20 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       id: z.string(), taskSummary: z.string(), status: z.string(),
       createdAt: z.string(), agentNames: z.array(z.string()),
     })),
+  }) }),
+  // Guardrail security events
+  z.object({ type: z.literal('guardrail:event'), payload: z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    inputSnippet: z.string(),
+    patterns: z.array(z.string()),
+    severity: z.enum(['low', 'high']),
+    llmClassification: z.object({
+      isInjection: z.boolean(),
+      confidence: z.number(),
+      reason: z.string(),
+    }).optional(),
+    action: z.enum(['sanitized', 'blocked', 'rate_limited']),
   }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

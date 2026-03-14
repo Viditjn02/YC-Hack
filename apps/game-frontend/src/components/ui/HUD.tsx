@@ -9,6 +9,7 @@ import { useActivityStore } from '@/stores/activityStore';
 import { gameSocket } from '@/lib/websocket';
 import { statusColors, statusLabels } from '@/data/agents';
 import { ModeToggle } from '@/components/imagine/ModeToggle';
+import { SecurityPanel } from '@/components/ui/SecurityPanel';
 
 function formatToolName(raw: string): string {
   const parts = raw.split('_');
@@ -125,6 +126,7 @@ export function HUD() {
           </div>
         ))}
       </div>
+      <SecurityPanel />
     </div>
   );
 }

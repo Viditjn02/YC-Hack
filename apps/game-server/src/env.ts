@@ -40,6 +40,9 @@ const envSchema = z.object({
   RETELL_AGENT_ID: z.string().optional(),
   RETELL_FROM_NUMBER: z.string().optional(),
 
+  // Guardrails
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(100).default(20),
+
 });
 
 export type Env = z.infer<typeof envSchema>;

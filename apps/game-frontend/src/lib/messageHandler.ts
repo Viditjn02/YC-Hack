@@ -9,6 +9,7 @@ import { useProductStore } from '@/stores/productStore';
 import { useToolStore } from '@/stores/toolStore';
 import { useActivityStore } from '@/stores/activityStore';
 import { useBrowserUseStore } from '@/stores/browserUseStore';
+import { useSecurityStore } from '@/stores/securityStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
@@ -424,6 +425,20 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
       case 'voice:playerTalking': {
         const { playerId, isTalking } = msg.payload;
         useWorldStore.getState().setPlayerTalking(playerId, isTalking);
+        break;
+      }
+
+      case 'guardrail:event': {
+        const p = msg.payload;
+        useSecurityStore.getState().addEvent({
+          agentId: p.agentId,
+          agentName: p.agentName,
+          inputSnippet: p.inputSnippet,
+          patterns: p.patterns,
+          severity: p.severity,
+          llmClassification: p.llmClassification,
+          action: p.action,
+        });
         break;
       }
     }

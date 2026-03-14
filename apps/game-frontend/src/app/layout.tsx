@@ -1,8 +1,7 @@
 import './global.css';
-import { Sora } from 'next/font/google';
 import Providers from './providers';
 
-const sora = Sora({ subsets: ['latin'] });
+const fontClass = 'font-sans';
 
 export const metadata = {
   title: 'BossBot',
@@ -17,7 +16,7 @@ export default function RootLayout({
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || '';
 
   return (
-    <html lang="en" className={sora.className}>
+    <html lang="en" className={fontClass}>
       <head>
         {wsUrl && <meta name="ws-url" content={wsUrl} />}
         <script
